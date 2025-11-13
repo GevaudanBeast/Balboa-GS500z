@@ -200,6 +200,74 @@ Pour passer de ST à SL, il faut passer par ECO :
 2. Attendre validation
 3. `ECO → SL`
 
+## ⚠️ Comportement spécifique du mode ECO
+
+### Mode ECO : Une alternance automatique
+
+**Découverte importante** : Le mode ECO (0x00) n'est pas un mode stable comme ST ou SL. Quand l'utilisateur sélectionne ECO sur le clavier VL403, la carte GS500Z effectue automatiquement une **alternance entre les trois modes** pour optimiser la consommation énergétique.
+
+### Ce qui se passe réellement
+
+```
+Clavier VL403 : Bouton "ECO" sélectionné
+                      │
+                      ▼
+         ┌────────────────────────┐
+         │  Carte GS500Z alterne  │
+         │   automatiquement :    │
+         └────────────────────────┘
+                      │
+      ┌───────────────┼───────────────┐
+      ▼               ▼               ▼
+  ST (0x20)      ECO (0x00)      SL (0x40)
+  Majoritaire    Occasionnel     Rare
+```
+
+### Distribution observée (capture réelle)
+
+Dans une session de 7208 trames avec le mode ECO sélectionné sur le VL403 :
+
+| Mode RS-485 | Byte 23 | Occurrence | Pourcentage |
+|-------------|---------|------------|-------------|
+| ST          | 0x20    | 6600 fois  | 91.5%       |
+| ECO         | 0x00    | 468 fois   | 6.5%        |
+| SL          | 0x40    | 140 fois   | 2.0%        |
+
+**Conclusion** : Le mode ECO est un **cycle automatique géré par le spa** qui alterne principalement entre ST (pour chauffer efficacement) et occasionnellement ECO/SL (pour économiser l'énergie).
+
+### Impact sur l'intégration Home Assistant
+
+L'intégration affiche le mode **réel du bus RS-485** à chaque instant :
+
+```yaml
+# Ce que vous verrez dans HA quand ECO est actif :
+climate.spa:
+  preset_mode: "standard"    # ← 91.5% du temps (0x20)
+
+climate.spa:
+  preset_mode: "eco"         # ← 6.5% du temps (0x00)
+
+climate.spa:
+  preset_mode: "sleep"       # ← 2% du temps (0x40)
+```
+
+**Ceci est un comportement normal** : l'intégration reflète fidèlement l'état RS-485 instantané. Les "sauts" entre les modes sont la gestion énergétique du spa, pas un bug.
+
+### Pourquoi cette approche ?
+
+1. **Transparence** : L'intégration affiche l'état réel du bus RS-485
+2. **Précision** : Les automations peuvent réagir à l'état exact du chauffage
+3. **Débogage** : Permet de comprendre le comportement réel du spa
+
+### Alternative future (v0.2.0+)
+
+Pour une UX simplifiée, une future version pourrait ajouter :
+- Un "mode virtuel ECO" qui masque l'alternance
+- Un sensor séparé `sensor.spa_rs485_mode` montrant le mode instantané
+- Le climate entity montrant le mode sélectionné sur le VL403
+
+📁 Voir `CAPTURE_ANALYSIS.md` pour les détails complets de l'analyse.
+
 ## 🔧 Commandes d'écriture (injection RS-485)
 
 ⚠️ **Cette section décrit la logique théorique. L'implémentation exacte doit être validée sur votre installation.**
