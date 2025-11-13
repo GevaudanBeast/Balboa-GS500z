@@ -270,15 +270,73 @@ Pour une UX simplifiée, une future version pourrait ajouter :
 
 ## 🔧 Commandes d'écriture (injection RS-485)
 
-⚠️ **Cette section décrit la logique théorique. L'implémentation exacte doit être validée sur votre installation.**
+### ⛔ LIMITATION IMPORTANTE : Écriture RS-485 impossible
 
-### Principe général
+**Découverte après tests approfondis** : Il n'est **PAS possible** d'écrire sur le bus RS-485 pour contrôler le spa.
+
+#### Pourquoi ?
+
+1. **Le VL403 utilise un protocole propriétaire** :
+   - Le clavier VL403 ne communique pas en RS-485 standard
+   - Le protocole de commande est propriétaire à Balboa
+   - Les trames RS-485 observées sont en **lecture seule** (monitoring)
+
+2. **Comportements anormaux observés** :
+   - Brancher l'EW11A sur les connecteurs du clavier déclenche des dysfonctionnements
+   - Exemple : pompe mise en marche forcée de façon non sollicitée
+   - Risque de dommages à l'électronique du spa
+
+3. **Architecture du système** :
+   ```
+   ┌──────────┐         ┌──────────┐
+   │  VL403   │ Proprio │ GS500Z   │
+   │ (Clavier)│◄───────►│ (Carte)  │
+   └──────────┘         └──────────┘
+                             │
+                             │ RS-485 (READ-ONLY)
+                             │ Broadcast frames
+                             ▼
+                        ┌──────────┐
+                        │  EW11A   │
+                        │ (Bridge) │
+                        └──────────┘
+                             │
+                             ▼
+                        Home Assistant
+                        (MONITORING ONLY)
+   ```
+
+#### Conséquence pour l'intégration
+
+L'intégration Home Assistant est en **mode lecture seule** :
+- ✅ Supervision complète : température, mode, chauffage
+- ✅ Automations basées sur l'état
+- ✅ Notifications et tableaux de bord
+- ❌ Pas de changement de température via HA
+- ❌ Pas de changement de mode via HA
+
+#### Solutions de contrôle
+
+Pour contrôler le spa depuis Home Assistant :
+
+1. **Solution recommandée : Contrôle IR via ESP32** (voir `IR_CONTROL.md`)
+2. **Utilisation du clavier physique VL403** (toujours fonctionnel)
+
+---
+
+### 📜 Documentation théorique (archives)
+
+⚠️ **Les sections suivantes sont conservées à titre documentaire uniquement.**
+
+Elles décrivent la logique théorique d'écriture RS-485, mais cette approche s'est révélée non fonctionnelle.
+
+#### Principe général (théorique)
 
 Le clavier VL403 envoie des commandes à la carte GS500Z pour :
 - Changer la consigne de température
 - Changer le mode (bouton mode)
 
-L'intégration doit reproduire ces commandes.
+L'intégration devrait reproduire ces commandes.
 
 ### Commande : Changer la consigne
 

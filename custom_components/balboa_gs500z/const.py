@@ -56,9 +56,9 @@ VALID_MODE_TRANSITIONS: Final = {
     HVAC_MODE_SL: [HVAC_MODE_ST],
 }
 
-# Service names
-SERVICE_SET_TEMPERATURE: Final = "set_temperature"
-SERVICE_SET_MODE: Final = "set_mode"
+# NOTE: Services are not defined because write operations are not supported.
+# The VL403 uses a proprietary protocol (not standard RS-485).
+# For control, use physical keypad or IR remote via ESP32 (see IR_CONTROL.md).
 
 # Entity IDs
 CLIMATE_ENTITY_ID: Final = "spa"

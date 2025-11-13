@@ -6,26 +6,32 @@
 [![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Intégration Home Assistant complète pour contrôler un spa Balboa GS500Z via un module RS-485 WiFi EW11A.
+Intégration Home Assistant pour **superviser** un spa Balboa GS500Z via un module RS-485 WiFi EW11A.
+
+> ⚠️ **Mode lecture seule** : Cette intégration permet de **lire** l'état du spa (température, mode, chauffage) mais **ne peut pas le contrôler** via RS-485. Le VL403 utilise un protocole propriétaire. Pour le contrôle, voir la [solution IR avec ESP32](#-contrôle-du-spa-solution-ir).
 
 ## 🎯 Fonctionnalités
 
-- **Climate Entity** : Contrôle complet du spa
-  - Température de l'eau en temps réel
-  - Réglage de la température cible
-  - Modes de fonctionnement : Standard (ST), Économique (ECO), Sommeil (SL)
+### Supervision RS-485 (lecture seule)
+
+- **Climate Entity** : Affichage de l'état du spa
+  - 🌡️ Température de l'eau en temps réel
+  - 🎯 Température de consigne actuelle
+  - 🔄 Mode de fonctionnement : Standard (ST), Économique (ECO), Sommeil (SL)
 
 - **Binary Sensor** : État du chauffage (actif/inactif)
 
-- **Services** :
-  - `balboa_gs500z.set_temperature` : Définir la température cible
-  - `balboa_gs500z.set_mode` : Changer le mode de fonctionnement
-
 - **Fonctionnalités avancées** :
   - Fenêtre glissante pour validation des données (évite les lectures erronées)
-  - Garde-fou d'ordre des modes (respecte la séquence ST→ECO→SL→ST)
   - Auto-reconnexion TCP en cas de déconnexion
   - Configuration modifiable après installation
+  - Analyse complète des 16 841 trames réelles validée ✅
+
+### Contrôle du spa (solution à implémenter)
+
+Pour contrôler le spa depuis Home Assistant :
+- 🎯 **Solution recommandée** : Module IR + ESP32 avec ESPHome (voir [IR_CONTROL.md](IR_CONTROL.md))
+- ⌨️ **Alternative** : Utilisation du clavier physique VL403
 
 ## 📋 Prérequis
 
@@ -77,39 +83,7 @@ Après installation, vous pouvez configurer les options en cliquant sur **Config
 - `climate.spa` : Contrôle du spa
 - `binary_sensor.spa_heater` : État du chauffage
 
-### Exemples d'automatisations
-
-#### Régler la température à 38°C à 18h
-
-```yaml
-automation:
-  - alias: "Spa - Chauffer à 18h"
-    trigger:
-      - platform: time
-        at: "18:00:00"
-    action:
-      - service: climate.set_temperature
-        target:
-          entity_id: climate.spa
-        data:
-          temperature: 38
-```
-
-#### Passer en mode ECO la nuit
-
-```yaml
-automation:
-  - alias: "Spa - Mode ECO la nuit"
-    trigger:
-      - platform: time
-        at: "23:00:00"
-    action:
-      - service: climate.set_preset_mode
-        target:
-          entity_id: climate.spa
-        data:
-          preset_mode: "eco"
-```
+### Exemples d'automatisations (lecture seule)
 
 #### Notification quand le chauffage s'allume
 
@@ -123,25 +97,104 @@ automation:
     action:
       - service: notify.mobile_app
         data:
-          message: "Le chauffage du spa est actif"
+          message: "Le chauffage du spa est actif 🔥"
 ```
 
-### Utilisation des services
-
-#### Service set_temperature
+#### Alerte si la température descend trop bas
 
 ```yaml
-service: balboa_gs500z.set_temperature
-data:
-  temperature: 38
+automation:
+  - alias: "Spa - Alerte température basse"
+    trigger:
+      - platform: numeric_state
+        entity_id: climate.spa
+        value_template: "{{ state.attributes.current_temperature }}"
+        below: 30
+    action:
+      - service: notify.mobile_app
+        data:
+          title: "⚠️ Spa froid"
+          message: "Température : {{ states.climate.spa.attributes.current_temperature }}°C"
 ```
 
-#### Service set_mode
+#### Notification quand le spa atteint la température cible
 
 ```yaml
-service: balboa_gs500z.set_mode
-data:
-  mode: "eco"  # Options: "standard", "eco", "sleep"
+automation:
+  - alias: "Spa - Prêt à utiliser"
+    trigger:
+      - platform: template
+        value_template: >
+          {{ state_attr('climate.spa', 'current_temperature') >=
+             state_attr('climate.spa', 'temperature') }}
+    condition:
+      - condition: state
+        entity_id: binary_sensor.spa_heater
+        state: "on"
+    action:
+      - service: notify.mobile_app
+        data:
+          title: "🌡️ Spa prêt !"
+          message: "Le spa a atteint {{ states.climate.spa.attributes.temperature }}°C"
+```
+
+#### Suivi de l'utilisation du chauffage
+
+```yaml
+# Créer un helper "Temps d'utilisation du chauffage"
+# Configuration → Appareils et services → Assistants → Créer un assistant
+# Type : Historique
+
+automation:
+  - alias: "Spa - Statistiques chauffage"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.spa_heater
+        to: "off"
+        for: "00:10:00"
+    action:
+      - service: notify.mobile_app
+        data:
+          message: "Chauffage éteint depuis 10 minutes. Mode : {{ state_attr('climate.spa', 'preset_mode') }}"
+```
+
+### Carte Lovelace pour supervision
+
+```yaml
+type: vertical-stack
+cards:
+  # État du spa
+  - type: thermostat
+    entity: climate.spa
+    name: "Spa Balboa GS500Z"
+
+  # Détails
+  - type: entities
+    title: "Détails"
+    entities:
+      - entity: climate.spa
+        type: attribute
+        attribute: current_temperature
+        name: "Température actuelle"
+      - entity: climate.spa
+        type: attribute
+        attribute: temperature
+        name: "Consigne"
+      - entity: climate.spa
+        type: attribute
+        attribute: preset_mode
+        name: "Mode"
+      - entity: binary_sensor.spa_heater
+        name: "Chauffage"
+
+  # Graphique historique
+  - type: history-graph
+    title: "Historique 24h"
+    entities:
+      - entity: climate.spa
+        name: "Température"
+      - entity: binary_sensor.spa_heater
+        name: "Chauffage"
 ```
 
 ## 🔌 Configuration EW11A
@@ -154,6 +207,52 @@ Le module EW11A doit être configuré en mode TCP Server :
 - **Stop Bits** : 1
 - **Parity** : None
 - **Port** : 8899 (ou autre port de votre choix)
+
+## 🎯 Contrôle du spa : Solution IR
+
+### Pourquoi le contrôle RS-485 ne fonctionne pas ?
+
+Après des tests approfondis, il a été confirmé que :
+- ❌ Le clavier VL403 utilise un **protocole propriétaire** (non RS-485 standard)
+- ❌ Brancher l'EW11A sur les connecteurs clavier provoque des dysfonctionnements (ex: pompe forcée)
+- ✅ Le bus RS-485 est en **lecture seule** (monitoring/broadcast uniquement)
+
+### Solution : Module IR + ESP32
+
+Pour contrôler le spa depuis Home Assistant, utilisez :
+
+| Composant | Rôle |
+|-----------|------|
+| **Module IR Balboa** | Récepteur infrarouge officiel (se branche sur GS500Z) |
+| **ESP32 + ESPHome** | Émetteur IR pilotable depuis Home Assistant |
+
+**Architecture complète** :
+
+```
+Home Assistant
+     │
+     ├──► Balboa GS500Z (cette intégration)
+     │    └─► Lecture via RS-485 (EW11A)
+     │
+     └──► ESP32 ESPHome
+          └─► Contrôle via IR → Module IR Balboa
+```
+
+### Guide complet : IR_CONTROL.md
+
+📁 Voir **[IR_CONTROL.md](IR_CONTROL.md)** pour le guide complet :
+- Matériel nécessaire (ESP32, LED IR, récepteur IR)
+- Reverse engineering du protocole IR
+- Configuration ESPHome complète
+- Scripts Home Assistant pour contrôle transparent
+- Exemples d'automatisations avec contrôle
+
+**Avantages de cette solution** :
+- ✅ Lecture temps réel (RS-485 via cette intégration)
+- ✅ Écriture fonctionnelle (IR via ESP32)
+- ✅ Aucune modification du spa
+- ✅ Intégration native ESPHome
+- ✅ Sécurisé (pas de risque électronique)
 
 ## 📡 Protocole RS-485
 
@@ -199,16 +298,25 @@ Les transitions invalides sont bloquées pour éviter les erreurs.
 
 - Vérifiez que le spa envoie bien des trames (regardez les logs en mode debug)
 - Augmentez la taille de la fenêtre glissante dans les options
-- Désactivez temporairement le garde-fou d'ordre
+- Vérifiez que l'EW11A est bien branché sur les connecteurs RS-485 (pas sur les connecteurs clavier)
 
-### Les commandes ne fonctionnent pas
+### Le mode ECO change constamment
 
-⚠️ **Note importante** : L'implémentation actuelle des commandes d'écriture (setpoint et mode) est une base à affiner selon votre configuration spécifique. Le protocole exact pour envoyer des commandes au GS500Z peut nécessiter des ajustements basés sur vos tests.
+⚠️ **Comportement normal** : Quand le mode ECO est sélectionné sur le VL403, le GS500Z alterne automatiquement entre ST/ECO/SL pour optimiser la consommation. L'intégration affiche le **mode RS-485 instantané**.
 
-Pour déboguer :
-1. Activez les logs debug (voir ci-dessous)
-2. Observez les trames dans les logs
-3. Ajustez les méthodes `build_setpoint_command()` et `build_mode_command()` dans `tcp_client.py`
+Distribution typique en mode ECO :
+- 91.5% du temps : `standard` (0x20)
+- 6.5% du temps : `eco` (0x00)
+- 2% du temps : `sleep` (0x40)
+
+Ceci n'est **pas un bug** - c'est le fonctionnement réel du spa. Voir [PROTOCOL.md](PROTOCOL.md) pour plus de détails.
+
+### Je veux contrôler le spa depuis Home Assistant
+
+Cette intégration est en **mode lecture seule**. Pour le contrôle :
+- 📖 Consultez [IR_CONTROL.md](IR_CONTROL.md) pour la solution complète
+- 🎯 Utilisez un module IR Balboa + ESP32 avec ESPHome
+- ⚠️ **Ne tentez PAS** d'écrire directement sur le bus RS-485
 
 ### Activer les logs debug
 
@@ -265,7 +373,9 @@ Pour toute question ou problème :
 
 - Cette intégration est fournie "telle quelle" sans garantie
 - Testez d'abord sur un environnement de développement
-- Les commandes d'écriture nécessitent une validation sur votre installation
+- **Mode lecture seule** : Cette intégration ne peut pas contrôler le spa (voir [IR_CONTROL.md](IR_CONTROL.md) pour le contrôle)
+- Ne branchez **jamais** l'EW11A sur les connecteurs du clavier VL403 (risque de dysfonctionnement)
+- Branchez l'EW11A uniquement sur les connecteurs RS-485 prévus à cet effet
 - Faites une sauvegarde de votre configuration Home Assistant avant installation
 
 ## 🙏 Remerciements

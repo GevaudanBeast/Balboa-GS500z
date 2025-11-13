@@ -42,16 +42,20 @@ async def async_setup_entry(
 
 
 class BalboaClimate(CoordinatorEntity, ClimateEntity):
-    """Representation of a Balboa GS500Z Spa as a climate device."""
+    """Representation of a Balboa GS500Z Spa as a climate device.
+
+    READ-ONLY MODE: This integration cannot write to the RS-485 bus.
+    The VL403 keypad uses a proprietary protocol, not standard RS-485 commands.
+    Control must be done via the physical keypad or future IR remote (ESP32).
+    """
 
     _attr_has_entity_name = True
     _attr_name = "Spa"
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_hvac_modes = [HVACMode.HEAT]  # Spa is always in heat mode
     _attr_preset_modes = [HVAC_MODE_ST, HVAC_MODE_ECO, HVAC_MODE_SL]
-    _attr_supported_features = (
-        ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.PRESET_MODE
-    )
+    # READ-ONLY: No write features supported (VL403 uses proprietary protocol)
+    _attr_supported_features = 0
     _attr_target_temperature_step = 1
     _attr_min_temp = 15
     _attr_max_temp = 40
@@ -98,40 +102,16 @@ class BalboaClimate(CoordinatorEntity, ClimateEntity):
                 return RS485_TO_HA_MODE.get(rs485_mode, HVAC_MODE_ST)
         return None
 
-    async def async_set_temperature(self, **kwargs: Any) -> None:
-        """Set new target temperature."""
-        temperature = kwargs.get(ATTR_TEMPERATURE)
-        if temperature is None:
-            return
-
-        _LOGGER.info("Setting target temperature to %s°C", temperature)
-        await self.coordinator.async_set_temperature(int(temperature))
-
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set new HVAC mode."""
         # Spa only supports heat mode, so this is a no-op
         _LOGGER.debug("HVAC mode change requested: %s (no action taken)", hvac_mode)
 
-    async def async_set_preset_mode(self, preset_mode: str) -> None:
-        """Set new preset mode (ST/ECO/SL)."""
-        _LOGGER.info("Setting preset mode to %s", preset_mode)
-
-        # Convert HA mode to RS-485 mode
-        rs485_mode = HA_TO_RS485_MODE.get(preset_mode)
-        if rs485_mode is None:
-            _LOGGER.error("Invalid preset mode: %s", preset_mode)
-            return
-
-        # Map back to protocol mode name
-        mode_names = {
-            HVAC_MODE_ST: "ST",
-            HVAC_MODE_ECO: "ECO",
-            HVAC_MODE_SL: "SL",
-        }
-        target_mode = mode_names.get(preset_mode)
-
-        if target_mode:
-            await self.coordinator.async_set_mode(target_mode)
+    # NOTE: async_set_temperature and async_set_preset_mode are not implemented.
+    # The VL403 keypad uses a proprietary protocol that cannot be written to via RS-485.
+    # Control must be done via:
+    # - Physical VL403 keypad
+    # - IR remote control (requires ESP32/ESPHome module - future feature)
 
     @property
     def icon(self) -> str:

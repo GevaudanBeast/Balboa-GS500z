@@ -6,7 +6,7 @@ import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 
 from .const import (
@@ -18,8 +18,6 @@ from .const import (
     DEFAULT_ORDER_GUARD,
     DEFAULT_WINDOW_SIZE,
     DOMAIN,
-    SERVICE_SET_MODE,
-    SERVICE_SET_TEMPERATURE,
     TCP_CLIENT,
 )
 from .coordinator import BalboaDataCoordinator
@@ -74,23 +72,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Forward entry setup to platforms
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    # Register services
-    async def handle_set_temperature(call: ServiceCall) -> None:
-        """Handle set temperature service."""
-        temperature = call.data.get("temperature")
-        if temperature:
-            await coordinator.async_set_temperature(int(temperature))
-
-    async def handle_set_mode(call: ServiceCall) -> None:
-        """Handle set mode service."""
-        mode = call.data.get("mode")
-        if mode:
-            await coordinator.async_set_mode(mode.upper())
-
-    hass.services.async_register(
-        DOMAIN, SERVICE_SET_TEMPERATURE, handle_set_temperature
-    )
-    hass.services.async_register(DOMAIN, SERVICE_SET_MODE, handle_set_mode)
+    # NOTE: Services are not registered because write operations are not supported.
+    # The VL403 keypad uses a proprietary protocol (not standard RS-485).
+    # For spa control, use physical keypad or IR remote via ESP32 (see IR_CONTROL.md).
 
     # Register update listener for options
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
@@ -111,11 +95,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         data = hass.data[DOMAIN].pop(entry.entry_id)
         tcp_client: BalboaTCPClient = data[TCP_CLIENT]
         await tcp_client.disconnect()
-
-        # Remove services if this is the last entry
-        if not hass.data[DOMAIN]:
-            hass.services.async_remove(DOMAIN, SERVICE_SET_TEMPERATURE)
-            hass.services.async_remove(DOMAIN, SERVICE_SET_MODE)
 
     return unload_ok
 

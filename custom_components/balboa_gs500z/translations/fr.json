@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Configuration du Spa Balboa GS500Z",
-        "description": "Saisissez l'adresse IP et le port du module EW11A. Trouvez l'IP dans la liste des appareils de votre routeur ou l'interface web de l'EW11A (par défaut 192.168.4.1).",
+        "description": "Cette intégration offre une supervision LECTURE SEULE via RS-485 (température, mode, état chauffage). Le contrôle nécessite un module IR + ESP32 (voir documentation). Saisissez l'adresse IP et le port du module EW11A.",
         "data": {
           "host": "Adresse IP (ex: 192.168.1.100)",
           "port": "Port TCP"
@@ -42,28 +42,6 @@
     "binary_sensor": {
       "spa_heater": {
         "name": "Chauffage"
-      }
-    }
-  },
-  "services": {
-    "set_temperature": {
-      "name": "Définir la température",
-      "description": "Définir la température cible du spa",
-      "fields": {
-        "temperature": {
-          "name": "Température",
-          "description": "Température cible en Celsius"
-        }
-      }
-    },
-    "set_mode": {
-      "name": "Définir le mode",
-      "description": "Définir le mode de fonctionnement du spa (ST/ECO/SL)",
-      "fields": {
-        "mode": {
-          "name": "Mode",
-          "description": "Mode de fonctionnement (standard, eco ou sleep)"
-        }
       }
     }
   }

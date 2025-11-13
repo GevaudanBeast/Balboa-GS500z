@@ -223,72 +223,78 @@ class BalboaTCPClient:
             _LOGGER.error("Error parsing frame: %s", err)
             return None
 
+    # ==================================================================================
+    # WRITE COMMANDS - NOT SUPPORTED
+    # ==================================================================================
+    # The following methods were designed for RS-485 write operations, but tests have
+    # confirmed that the VL403 keypad uses a PROPRIETARY protocol (not standard RS-485).
+    #
+    # Attempting to write to the RS-485 bus causes malfunctions (e.g., forced pump activation).
+    # The RS-485 bus is READ-ONLY for monitoring purposes.
+    #
+    # For spa control, use:
+    # - Physical VL403 keypad
+    # - IR remote control via ESP32/ESPHome (see IR_CONTROL.md)
+    # ==================================================================================
+
     async def send_command(self, command: bytes) -> bool:
-        """Send a command to the spa."""
-        if not self._writer:
-            _LOGGER.error("Cannot send command: not connected")
-            return False
+        """Send a command to the spa.
 
-        try:
-            # Encapsulate command in brackets with hex encoding
-            hex_str = command.hex().upper()
-            frame = f"[{hex_str}]\r\n".encode("ascii")
-
-            _LOGGER.info("Sending command: %s", hex_str)
-            self._writer.write(frame)
-            await self._writer.drain()
-            return True
-
-        except Exception as err:
-            _LOGGER.error("Error sending command: %s", err)
-            return False
+        ⚠️ NOT SUPPORTED: RS-485 write operations are not functional.
+        The VL403 uses a proprietary protocol. See IR_CONTROL.md for alternatives.
+        """
+        _LOGGER.error(
+            "RS-485 write not supported. VL403 uses proprietary protocol. "
+            "Use physical keypad or IR control (ESP32). See IR_CONTROL.md"
+        )
+        return False
 
     def build_setpoint_command(self, setpoint: int) -> bytes:
-        """Build a setpoint change command."""
-        # Based on VL403 protocol, we need to send a command frame
-        # The exact format depends on the protocol specification
-        # This is a basic implementation that needs to be adjusted
+        """Build a setpoint change command.
 
-        # Convert setpoint to raw value (divide by 0.5)
+        ⚠️ NOT SUPPORTED: Kept for reference only.
+        RS-485 write operations do not work with GS500Z/VL403.
+        """
+        _LOGGER.warning(
+            "build_setpoint_command called but RS-485 write is not supported. "
+            "Use IR control instead (see IR_CONTROL.md)"
+        )
+
+        # Legacy code kept for reference
         setpoint_raw = int(setpoint / TEMP_MULTIPLIER)
-
-        # Build command frame (this is a simplified version)
-        # In reality, you need to follow the exact VL403 command protocol
         command = bytearray(FRAME_HEADER)
         command.extend([0x00] * (FRAME_LENGTH - 3))
-        command[5] = setpoint_raw  # Set the setpoint byte
-
-        # Calculate checksum if needed (depends on protocol)
-        # command[-1] = self._calculate_checksum(command[:-1])
+        command[5] = setpoint_raw
 
         return bytes(command)
 
     def build_mode_command(self, current_mode: str, target_mode: str) -> Optional[bytes]:
-        """Build a mode change command (cycle through modes)."""
-        # VL403 uses a button press to cycle through modes
-        # We need to calculate how many presses are needed
+        """Build a mode change command.
 
+        ⚠️ NOT SUPPORTED: Kept for reference only.
+        RS-485 write operations do not work with GS500Z/VL403.
+        """
+        _LOGGER.warning(
+            "build_mode_command called but RS-485 write is not supported. "
+            "Use IR control instead (see IR_CONTROL.md)"
+        )
+
+        # Legacy code kept for reference
         mode_sequence = ["ST", "ECO", "SL"]
 
         if current_mode not in mode_sequence or target_mode not in mode_sequence:
-            _LOGGER.error("Invalid mode: current=%s, target=%s", current_mode, target_mode)
             return None
 
         current_idx = mode_sequence.index(current_mode)
         target_idx = mode_sequence.index(target_mode)
-
-        # Calculate presses needed (cycling forward)
         presses = (target_idx - current_idx) % len(mode_sequence)
 
         if presses == 0:
-            _LOGGER.info("Already in target mode %s", target_mode)
             return None
 
-        # Build mode button press command
-        # This is a simplified implementation
         command = bytearray(FRAME_HEADER)
         command.extend([0x00] * (FRAME_LENGTH - 3))
-        command[23] = 0x01  # Mode button press indicator (example)
+        command[23] = 0x01
 
         return bytes(command)
 

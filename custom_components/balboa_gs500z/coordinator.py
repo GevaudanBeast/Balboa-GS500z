@@ -170,57 +170,36 @@ class BalboaDataCoordinator(DataUpdateCoordinator):
         # Return current stable data
         return self._stable_data
 
+    # ==================================================================================
+    # WRITE COMMANDS - NOT SUPPORTED
+    # ==================================================================================
+    # These methods are not functional. RS-485 write operations do not work with
+    # the VL403 keypad (uses proprietary protocol). See IR_CONTROL.md for alternatives.
+    # ==================================================================================
+
     async def async_set_temperature(self, temperature: int) -> bool:
-        """Set the target temperature."""
-        try:
-            command = self.client.build_setpoint_command(temperature)
-            success = await self.client.send_command(command)
+        """Set the target temperature.
 
-            if success:
-                _LOGGER.info("Setpoint command sent: %d°C", temperature)
-            else:
-                _LOGGER.error("Failed to send setpoint command")
-
-            return success
-
-        except Exception as err:
-            _LOGGER.error("Error setting temperature: %s", err)
-            return False
+        ⚠️ NOT SUPPORTED: RS-485 write operations are not functional.
+        Use physical VL403 keypad or IR control (ESP32). See IR_CONTROL.md.
+        """
+        _LOGGER.error(
+            "async_set_temperature not supported. VL403 uses proprietary protocol. "
+            "Use physical keypad or IR control (ESP32). See IR_CONTROL.md"
+        )
+        return False
 
     async def async_set_mode(self, mode: str) -> bool:
-        """Set the spa mode."""
-        try:
-            current_mode = self._stable_data.get("mode")
-            if not current_mode:
-                _LOGGER.error("Current mode unknown, cannot set mode")
-                return False
+        """Set the spa mode.
 
-            # Validate transition if order guard is enabled
-            if self.order_guard:
-                if not self._validate_mode_transition(current_mode, mode):
-                    _LOGGER.error(
-                        "Invalid mode transition: %s → %s (blocked by order guard)",
-                        current_mode,
-                        mode,
-                    )
-                    return False
-
-            command = self.client.build_mode_command(current_mode, mode)
-            if command is None:
-                return True  # Already in target mode
-
-            success = await self.client.send_command(command)
-
-            if success:
-                _LOGGER.info("Mode command sent: %s → %s", current_mode, mode)
-            else:
-                _LOGGER.error("Failed to send mode command")
-
-            return success
-
-        except Exception as err:
-            _LOGGER.error("Error setting mode: %s", err)
-            return False
+        ⚠️ NOT SUPPORTED: RS-485 write operations are not functional.
+        Use physical VL403 keypad or IR control (ESP32). See IR_CONTROL.md.
+        """
+        _LOGGER.error(
+            "async_set_mode not supported. VL403 uses proprietary protocol. "
+            "Use physical keypad or IR control (ESP32). See IR_CONTROL.md"
+        )
+        return False
 
     @property
     def stable_data(self) -> dict[str, Any]:
