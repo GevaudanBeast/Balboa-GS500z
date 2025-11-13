@@ -1,0 +1,296 @@
+{
+  "session": {
+    "name": "test_pompe_on_off",
+    "start_time": "2025-10-03T17:15:42.528867",
+    "duration_seconds": 120.26230430603027,
+    "frame_count": 121,
+    "avg_fps": 1.0061340558725078
+  },
+  "statistics": {
+    "water_temp": {
+      "min": 36.5,
+      "max": 36.5,
+      "avg": 36.5
+    },
+    "setpoint_temp": {
+      "min": 37.0,
+      "max": 37.0,
+      "avg": 37.0
+    },
+    "mode_distribution": {
+      "SL": 27,
+      "UNK": 31,
+      "ST": 63
+    },
+    "heater_on_percent": 100.0
+  },
+  "events_summary": {
+    "total_events": 10,
+    "by_type": {
+      "water_temp_changes": 0,
+      "setpoint_changes": 0,
+      "mode_changes": 3,
+      "heater_changes": 0,
+      "unknown_bytes_changes": 7
+    }
+  },
+  "byte_analysis": {
+    "byte_0": {
+      "unique_values": 1,
+      "is_constant": true,
+      "all_values": {
+        "100": 121
+      }
+    },
+    "byte_1": {
+      "unique_values": 1,
+      "is_constant": true,
+      "all_values": {
+        "63": 121
+      }
+    },
+    "byte_2": {
+      "unique_values": 1,
+      "is_constant": true,
+      "all_values": {
+        "43": 121
+      }
+    },
+    "byte_3": {
+      "unique_values": 1,
+      "is_constant": true,
+      "all_values": {
+        "73": 121
+      }
+    },
+    "byte_4": {
+      "unique_values": 2,
+      "is_constant": false,
+      "all_values": {
+        "72": 12,
+        "73": 109
+      }
+    },
+    "byte_5": {
+      "unique_values": 1,
+      "is_constant": true,
+      "all_values": {
+        "74": 121
+      }
+    },
+    "byte_6": {
+      "unique_values": 60,
+      "is_constant": false,
+      "all_values": {
+        "36": 3,
+        "37": 2,
+        "38": 2,
+        "39": 2,
+        "40": 2,
+        "41": 2,
+        "42": 2,
+        "43": 2,
+        "44": 2,
+        "45": 2,
+        "46": 2,
+        "47": 2,
+        "48": 2,
+        "49": 2,
+        "50": 2,
+        "51": 2,
+        "52": 2,
+        "53": 2,
+        "54": 2,
+        "55": 2,
+        "56": 2,
+        "57": 2,
+        "58": 2,
+        "59": 2,
+        "0": 2,
+        "1": 2,
+        "2": 2,
+        "3": 2,
+        "4": 2,
+        "5": 2,
+        "6": 2,
+        "7": 2,
+        "8": 2,
+        "9": 2,
+        "10": 2,
+        "11": 2,
+        "12": 2,
+        "13": 2,
+        "14": 2,
+        "15": 2,
+        "16": 2,
+        "17": 2,
+        "18": 2,
+        "19": 2,
+        "20": 2,
+        "21": 2,
+        "22": 2,
+        "23": 2,
+        "24": 2,
+        "25": 2,
+        "26": 2,
+        "27": 2,
+        "28": 2,
+        "29": 2,
+        "30": 2,
+        "31": 2,
+        "32": 2,
+        "33": 2,
+        "34": 2,
+        "35": 2
+      }
+    },
+    "byte_7": {
+      "unique_values": 3,
+      "is_constant": false,
+      "all_values": {
+        "8": 24,
+        "9": 60,
+        "10": 37
+      }
+    },
+    "byte_8": {
+      "unique_values": 1,
+      "is_constant": true,
+      "all_values": {
+        "20": 121
+      }
+    },
+    "byte_9": {
+      "unique_values": 1,
+      "is_constant": true,
+      "all_values": {
+        "4": 121
+      }
+    },
+    "byte_10": {
+      "unique_values": 1,
+      "is_constant": true,
+      "all_values": {
+        "1": 121
+      }
+    },
+    "byte_11": {
+      "unique_values": 1,
+      "is_constant": true,
+      "all_values": {
+        "0": 121
+      }
+    },
+    "byte_12": {
+      "unique_values": 1,
+      "is_constant": true,
+      "all_values": {
+        "5": 121
+      }
+    },
+    "byte_13": {
+      "unique_values": 1,
+      "is_constant": true,
+      "all_values": {
+        "0": 121
+      }
+    },
+    "byte_14": {
+      "unique_values": 1,
+      "is_constant": true,
+      "all_values": {
+        "13": 121
+      }
+    },
+    "byte_15": {
+      "unique_values": 1,
+      "is_constant": true,
+      "all_values": {
+        "0": 121
+      }
+    },
+    "byte_16": {
+      "unique_values": 1,
+      "is_constant": true,
+      "all_values": {
+        "17": 121
+      }
+    },
+    "byte_17": {
+      "unique_values": 3,
+      "is_constant": false,
+      "all_values": {
+        "1": 36,
+        "2": 58,
+        "0": 27
+      }
+    },
+    "byte_18": {
+      "unique_values": 2,
+      "is_constant": false,
+      "all_values": {
+        "24": 36,
+        "8": 85
+      }
+    },
+    "byte_19": {
+      "unique_values": 1,
+      "is_constant": true,
+      "all_values": {
+        "193": 121
+      }
+    },
+    "byte_20": {
+      "unique_values": 1,
+      "is_constant": true,
+      "all_values": {
+        "0": 121
+      }
+    },
+    "byte_21": {
+      "unique_values": 1,
+      "is_constant": true,
+      "all_values": {
+        "0": 121
+      }
+    },
+    "byte_22": {
+      "unique_values": 1,
+      "is_constant": true,
+      "all_values": {
+        "169": 121
+      }
+    },
+    "byte_23": {
+      "unique_values": 3,
+      "is_constant": false,
+      "all_values": {
+        "32": 63,
+        "96": 31,
+        "64": 27
+      }
+    },
+    "byte_24": {
+      "unique_values": 2,
+      "is_constant": false,
+      "all_values": {
+        "72": 12,
+        "73": 109
+      }
+    },
+    "byte_25": {
+      "unique_values": 1,
+      "is_constant": true,
+      "all_values": {
+        "0": 121
+      }
+    },
+    "byte_26": {
+      "unique_values": 1,
+      "is_constant": true,
+      "all_values": {
+        "0": 121
+      }
+    }
+  }
+}

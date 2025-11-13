@@ -1,0 +1,13 @@
+# Notes de capture - 2025-10-04 11:13:03
+# Mode: SL → SL
+# Fichier CSV: cycle_2h_SL_20251004_110158.csv
+#
+# Format: [Timestamp] [Temps_écoulé] Note
+#====================================================================
+
+[2025-10-04 11:02:53] [00:00:28] Pas de changement de mode car déjà en SL
+[2025-10-04 11:03:01] [00:00:35] 
+[2025-10-04 11:08:54] [00:06:28] 
+[2025-10-04 11:09:11] [00:03:00] [PHASE 3] La pompe était en high depuis le début de la capture
+[2025-10-04 11:09:14] [00:06:49] 
+[2025-10-04 11:13:03] [00:10:38] 

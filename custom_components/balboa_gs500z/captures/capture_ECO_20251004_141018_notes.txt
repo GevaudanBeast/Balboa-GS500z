@@ -1,0 +1,5 @@
+# Notes capture ECO - 20251004_141018
+# Mode: ST → ECO
+
+[2025-10-04 14:18:01] [00:07:05] [ACTIVATION POMPE] Pompe OFF
+[2025-10-04 14:20:48] [00:10:00] [ACTIVATION BLOWER] pompe toujours ezn LOW

@@ -1,0 +1,156 @@
+================================================================================
+RAPPORT D'ANALYSE - PROTOCOLE BALBOA GS500Z
+================================================================================
+
+Session: test_pompe_on_off
+Durée: 120.3s
+Trames: 121
+
+STATISTIQUES
+----------------------------------------
+Température eau: 36.5 - 36.5°C
+Consigne: 37.0 - 37.0°C
+Modes: {'SL': 27, 'UNK': 31, 'ST': 63}
+Chauffage: 100.0%
+
+ÉVÉNEMENTS
+----------------------------------------
+Total: 10
+
+ANALYSE BYTES
+----------------------------------------
+
+Byte 0:
+  Valeurs uniques: 1
+  Constant: OUI
+
+Byte 1:
+  Valeurs uniques: 1
+  Constant: OUI
+
+Byte 10:
+  Valeurs uniques: 1
+  Constant: OUI
+
+Byte 11:
+  Valeurs uniques: 1
+  Constant: OUI
+
+Byte 12:
+  Valeurs uniques: 1
+  Constant: OUI
+
+Byte 13:
+  Valeurs uniques: 1
+  Constant: OUI
+
+Byte 14:
+  Valeurs uniques: 1
+  Constant: OUI
+
+Byte 15:
+  Valeurs uniques: 1
+  Constant: OUI
+
+Byte 16:
+  Valeurs uniques: 1
+  Constant: OUI
+
+Byte 17:
+  Valeurs uniques: 3
+  Constant: NON
+  Valeurs:
+    0x00: 27 fois
+    0x01: 36 fois
+    0x02: 58 fois
+
+Byte 18:
+  Valeurs uniques: 2
+  Constant: NON
+  Valeurs:
+    0x08: 85 fois
+    0x18: 36 fois
+
+Byte 19:
+  Valeurs uniques: 1
+  Constant: OUI
+
+Byte 2:
+  Valeurs uniques: 1
+  Constant: OUI
+
+Byte 20:
+  Valeurs uniques: 1
+  Constant: OUI
+
+Byte 21:
+  Valeurs uniques: 1
+  Constant: OUI
+
+Byte 22:
+  Valeurs uniques: 1
+  Constant: OUI
+
+Byte 23:
+  Valeurs uniques: 3
+  Constant: NON
+  Valeurs:
+    0x20: 63 fois
+    0x40: 27 fois
+    0x60: 31 fois
+
+Byte 24:
+  Valeurs uniques: 2
+  Constant: NON
+  Valeurs:
+    0x48: 12 fois
+    0x49: 109 fois
+
+Byte 25:
+  Valeurs uniques: 1
+  Constant: OUI
+
+Byte 26:
+  Valeurs uniques: 1
+  Constant: OUI
+
+Byte 3:
+  Valeurs uniques: 1
+  Constant: OUI
+
+Byte 4:
+  Valeurs uniques: 2
+  Constant: NON
+  Valeurs:
+    0x48: 12 fois
+    0x49: 109 fois
+
+Byte 5:
+  Valeurs uniques: 1
+  Constant: OUI
+
+Byte 6:
+  Valeurs uniques: 60
+  Constant: NON
+  Valeurs:
+    0x00: 2 fois
+    0x01: 2 fois
+    0x02: 2 fois
+    0x03: 2 fois
+    0x04: 2 fois
+
+Byte 7:
+  Valeurs uniques: 3
+  Constant: NON
+  Valeurs:
+    0x08: 24 fois
+    0x09: 60 fois
+    0x0A: 37 fois
+
+Byte 8:
+  Valeurs uniques: 1
+  Constant: OUI
+
+Byte 9:
+  Valeurs uniques: 1
+  Constant: OUI

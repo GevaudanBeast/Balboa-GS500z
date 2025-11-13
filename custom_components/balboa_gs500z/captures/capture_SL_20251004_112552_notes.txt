@@ -1,0 +1,9 @@
+# Notes capture SL - 20251004_112552
+# Mode: SL → SL
+
+[2025-10-04 11:26:08] [00:00:00] [INITIAL] Démarrage en SL
+[2025-10-04 11:26:30] [00:00:00] [INITIALISATION] Pompe en LOW
+[2025-10-04 11:26:39] [00:00:22] [CHANGEMENT MODE] Je reste en SL
+[2025-10-04 11:30:02] [00:03:25] [ACTIVATION LUMIÈRE] J'allume la lumière après ce message
+[2025-10-04 11:37:51] [00:10:00] [ACTIVATION BLOWER] La pompe était en HIGH durant le test car déjà en LOW
+[2025-10-04 11:44:07] [00:15:00] [AJUSTEMENT TEMPÉRATURE] J'ai laissé la pompe en hight et le blower tourné jusqu'à extinction
