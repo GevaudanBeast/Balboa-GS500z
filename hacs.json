@@ -1,0 +1,6 @@
+{
+  "name": "Balboa GS500Z Spa",
+  "filename": "balboa_gs500z",
+  "render_readme": true,
+  "homeassistant": "2023.1.0"
+}

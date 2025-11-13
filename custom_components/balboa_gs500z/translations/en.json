@@ -1,0 +1,70 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Setup Balboa GS500Z Spa",
+        "description": "Enter the connection details for your EW11A RS-485 WiFi bridge",
+        "data": {
+          "host": "Host IP Address",
+          "port": "Port"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the EW11A bridge. Please check the host and port."
+    },
+    "abort": {
+      "already_configured": "This device is already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Balboa GS500Z Options",
+        "description": "Configure the integration options",
+        "data": {
+          "window_size": "Sliding Window Size (3-20)",
+          "order_guard": "Enable Mode Order Guard (ST→ECO→SL→ST)"
+        }
+      }
+    },
+    "error": {
+      "window_size_too_small": "Window size must be at least 3",
+      "window_size_too_large": "Window size must not exceed 20"
+    }
+  },
+  "entity": {
+    "climate": {
+      "spa": {
+        "name": "Spa"
+      }
+    },
+    "binary_sensor": {
+      "spa_heater": {
+        "name": "Heater"
+      }
+    }
+  },
+  "services": {
+    "set_temperature": {
+      "name": "Set Temperature",
+      "description": "Set the spa target temperature",
+      "fields": {
+        "temperature": {
+          "name": "Temperature",
+          "description": "Target temperature in Celsius"
+        }
+      }
+    },
+    "set_mode": {
+      "name": "Set Mode",
+      "description": "Set the spa operating mode (ST/ECO/SL)",
+      "fields": {
+        "mode": {
+          "name": "Mode",
+          "description": "Operating mode (standard, eco, or sleep)"
+        }
+      }
+    }
+  }
+}

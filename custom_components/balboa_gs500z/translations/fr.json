@@ -1,0 +1,70 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configuration du Spa Balboa GS500Z",
+        "description": "Saisissez les détails de connexion pour votre pont WiFi RS-485 EW11A",
+        "data": {
+          "host": "Adresse IP de l'hôte",
+          "port": "Port"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Échec de la connexion au pont EW11A. Veuillez vérifier l'hôte et le port."
+    },
+    "abort": {
+      "already_configured": "Ce dispositif est déjà configuré"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options Balboa GS500Z",
+        "description": "Configurer les options de l'intégration",
+        "data": {
+          "window_size": "Taille de la fenêtre glissante (3-20)",
+          "order_guard": "Activer le garde-fou d'ordre des modes (ST→ECO→SL→ST)"
+        }
+      }
+    },
+    "error": {
+      "window_size_too_small": "La taille de la fenêtre doit être d'au moins 3",
+      "window_size_too_large": "La taille de la fenêtre ne doit pas dépasser 20"
+    }
+  },
+  "entity": {
+    "climate": {
+      "spa": {
+        "name": "Spa"
+      }
+    },
+    "binary_sensor": {
+      "spa_heater": {
+        "name": "Chauffage"
+      }
+    }
+  },
+  "services": {
+    "set_temperature": {
+      "name": "Définir la température",
+      "description": "Définir la température cible du spa",
+      "fields": {
+        "temperature": {
+          "name": "Température",
+          "description": "Température cible en Celsius"
+        }
+      }
+    },
+    "set_mode": {
+      "name": "Définir le mode",
+      "description": "Définir le mode de fonctionnement du spa (ST/ECO/SL)",
+      "fields": {
+        "mode": {
+          "name": "Mode",
+          "description": "Mode de fonctionnement (standard, eco ou sleep)"
+        }
+      }
+    }
+  }
+}
