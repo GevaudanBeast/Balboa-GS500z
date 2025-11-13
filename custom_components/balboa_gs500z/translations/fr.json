@@ -2,16 +2,16 @@
   "config": {
     "step": {
       "user": {
-        "title": "Configuration du Spa Balboa GS500Z",
-        "description": "Cette intégration offre une supervision LECTURE SEULE via RS-485 (température, mode, état chauffage). Le contrôle nécessite un module IR + ESP32 (voir documentation). Saisissez l'adresse IP et le port du module EW11A.",
+        "title": "Connecter votre spa",
+        "description": "Entrez l'adresse IP de votre module WiFi EW11A. Vous verrez la température et l'état du spa dans Home Assistant.",
         "data": {
-          "host": "Adresse IP (ex: 192.168.1.100)",
-          "port": "Port TCP"
+          "host": "Adresse IP (ex : 192.168.1.50)",
+          "port": "Port (8899 par défaut)"
         }
       }
     },
     "error": {
-      "cannot_connect": "Impossible de se connecter au module EW11A. Vérifiez : (1) L'adresse IP est correcte, (2) Le port est 8899, (3) Le module est allumé et connecté au WiFi."
+      "cannot_connect": "Impossible de se connecter. Vérifiez que l'adresse IP est correcte et que le module EW11A est allumé."
     },
     "abort": {
       "already_configured": "Ce dispositif est déjà configuré"
@@ -20,17 +20,17 @@
   "options": {
     "step": {
       "init": {
-        "title": "Options Balboa GS500Z",
-        "description": "Configuration avancée. Fenêtre : plus grande = plus fiable mais mises à jour plus lentes (recommandé : 5). Garde-fou : empêche les transitions de mode invalides (recommandé : activé).",
+        "title": "Options avancées",
+        "description": "Ces réglages permettent d'affiner la lecture des données du spa. Les valeurs par défaut conviennent dans la plupart des cas.",
         "data": {
-          "window_size": "Fenêtre de validation (3-20 trames)",
-          "order_guard": "Forcer les transitions sécurisées"
+          "window_size": "Fiabilité des données (3-20, recommandé : 5)",
+          "order_guard": "Validation des modes (recommandé : activé)"
         }
       }
     },
     "error": {
-      "window_size_too_small": "La fenêtre doit contenir au moins 3 trames pour une validation fiable",
-      "window_size_too_large": "La fenêtre ne peut pas dépasser 20 trames (serait trop lent)"
+      "window_size_too_small": "La valeur doit être au moins 3 pour une lecture fiable",
+      "window_size_too_large": "La valeur ne peut pas dépasser 20"
     }
   },
   "entity": {

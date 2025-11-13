@@ -2,16 +2,16 @@
   "config": {
     "step": {
       "user": {
-        "title": "Setup Balboa GS500Z Spa",
-        "description": "This integration provides READ-ONLY monitoring via RS-485 (temperature, mode, heater status). Control requires IR module + ESP32 (see documentation). Enter your EW11A module IP address and port.",
+        "title": "Connect your spa",
+        "description": "Enter your EW11A WiFi module IP address. You'll see the spa temperature and status in Home Assistant.",
         "data": {
-          "host": "IP Address (e.g., 192.168.1.100)",
-          "port": "TCP Port"
+          "host": "IP Address (e.g., 192.168.1.50)",
+          "port": "Port (default 8899)"
         }
       }
     },
     "error": {
-      "cannot_connect": "Cannot connect to EW11A module. Check: (1) IP address is correct, (2) Port is 8899, (3) Module is powered on and connected to WiFi."
+      "cannot_connect": "Connection failed. Check that the IP address is correct and the EW11A module is powered on."
     },
     "abort": {
       "already_configured": "This device is already configured"
@@ -20,17 +20,17 @@
   "options": {
     "step": {
       "init": {
-        "title": "Balboa GS500Z Options",
-        "description": "Configure advanced options. Window: larger = more reliable but slower updates (recommended: 5). Guard: prevents invalid mode transitions (recommended: enabled).",
+        "title": "Advanced options",
+        "description": "These settings fine-tune how data is read from the spa. Default values work well in most cases.",
         "data": {
-          "window_size": "Data Validation Window (3-20 frames)",
-          "order_guard": "Enforce Safe Mode Transitions"
+          "window_size": "Data reliability (3-20, recommended: 5)",
+          "order_guard": "Mode validation (recommended: enabled)"
         }
       }
     },
     "error": {
-      "window_size_too_small": "Window size must be at least 3 frames for reliable validation",
-      "window_size_too_large": "Window size cannot exceed 20 frames (would be too slow)"
+      "window_size_too_small": "Value must be at least 3 for reliable reading",
+      "window_size_too_large": "Value cannot exceed 20"
     }
   },
   "entity": {
