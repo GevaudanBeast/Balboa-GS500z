@@ -1,0 +1,58 @@
+name: ❓ Question
+description: Poser une question sur l'intégration
+title: "[Question] : "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Avant de poser une question, vérifiez :
+        - [README.md](https://github.com/GevaudanBeast/Balboa-GS500z/blob/main/README.md)
+        - [INSTALL.md](https://github.com/GevaudanBeast/Balboa-GS500z/blob/main/INSTALL.md)
+        - [PROTOCOL.md](https://github.com/GevaudanBeast/Balboa-GS500z/blob/main/PROTOCOL.md)
+        - [Issues existantes](https://github.com/GevaudanBeast/Balboa-GS500z/issues)
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Votre question
+      description: Posez votre question de manière claire
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Catégorie
+      options:
+        - Installation
+        - Configuration
+        - Utilisation
+        - Protocole RS-485
+        - Module EW11A
+        - Automatisations
+        - Troubleshooting
+        - Autre
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version de l'intégration
+      placeholder: "0.1.0"
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexte
+      description: Informations supplémentaires qui pourraient aider
+      placeholder: |
+        - Configuration actuelle
+        - Ce que vous avez déjà essayé
+        - Messages d'erreur éventuels
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Informations supplémentaires

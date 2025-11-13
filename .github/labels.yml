@@ -1,0 +1,106 @@
+# Configuration des labels GitHub
+# Pour synchroniser : gh label sync -f .github/labels.yml
+
+- name: "bug"
+  color: "d73a4a"
+  description: "Quelque chose ne fonctionne pas"
+
+- name: "documentation"
+  color: "0075ca"
+  description: "Améliorations ou ajouts à la documentation"
+
+- name: "duplicate"
+  color: "cfd3d7"
+  description: "Cette issue ou PR existe déjà"
+
+- name: "enhancement"
+  color: "a2eeef"
+  description: "Nouvelle fonctionnalité ou demande"
+
+- name: "good first issue"
+  color: "7057ff"
+  description: "Bon pour les nouveaux contributeurs"
+
+- name: "help wanted"
+  color: "008672"
+  description: "Aide supplémentaire demandée"
+
+- name: "invalid"
+  color: "e4e669"
+  description: "Ceci ne semble pas correct"
+
+- name: "question"
+  color: "d876e3"
+  description: "Demande d'informations supplémentaires"
+
+- name: "wontfix"
+  color: "ffffff"
+  description: "Ceci ne sera pas corrigé"
+
+- name: "feature"
+  color: "84b6eb"
+  description: "Nouvelle fonctionnalité"
+
+- name: "improvement"
+  color: "5ebeff"
+  description: "Amélioration d'une fonctionnalité existante"
+
+- name: "fix"
+  color: "ee0701"
+  description: "Correction de bug"
+
+- name: "config"
+  color: "fef2c0"
+  description: "Changements de configuration"
+
+- name: "ci"
+  color: "ededed"
+  description: "Intégration continue"
+
+- name: "chore"
+  color: "fef2c0"
+  description: "Tâches de maintenance"
+
+- name: "refactor"
+  color: "fbca04"
+  description: "Refactorisation du code"
+
+- name: "dependencies"
+  color: "0366d6"
+  description: "Mise à jour des dépendances"
+
+- name: "hardware-tested"
+  color: "0e8a16"
+  description: "Testé sur matériel réel"
+
+- name: "needs-testing"
+  color: "fbca04"
+  description: "Nécessite des tests"
+
+- name: "breaking-change"
+  color: "b60205"
+  description: "Changement incompatible"
+
+- name: "priority: high"
+  color: "d93f0b"
+  description: "Priorité haute"
+
+- name: "priority: medium"
+  color: "fbca04"
+  description: "Priorité moyenne"
+
+- name: "priority: low"
+  color: "0e8a16"
+  description: "Priorité basse"
+
+- name: "protocol"
+  color: "006b75"
+  description: "Protocole RS-485"
+
+- name: "ew11a"
+  color: "1d76db"
+  description: "Module EW11A"
+
+- name: "ux"
+  color: "c5def5"
+  description: "Expérience utilisateur"

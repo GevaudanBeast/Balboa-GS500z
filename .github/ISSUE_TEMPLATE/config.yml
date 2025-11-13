@@ -1,0 +1,14 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 📚 Documentation
+    url: https://github.com/GevaudanBeast/Balboa-GS500z/blob/main/README.md
+    about: Consultez la documentation complète
+  - name: 💬 Discussions
+    url: https://github.com/GevaudanBeast/Balboa-GS500z/discussions
+    about: Posez des questions ou discutez avec la communauté
+  - name: 📖 Guide d'installation
+    url: https://github.com/GevaudanBeast/Balboa-GS500z/blob/main/INSTALL.md
+    about: Guide détaillé d'installation
+  - name: 🔧 Protocole RS-485
+    url: https://github.com/GevaudanBeast/Balboa-GS500z/blob/main/PROTOCOL.md
+    about: Documentation technique du protocole

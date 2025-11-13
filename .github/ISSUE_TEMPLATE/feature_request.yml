@@ -1,0 +1,85 @@
+name: ✨ Feature Request
+description: Proposer une nouvelle fonctionnalité
+title: "[Feature] : "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci de proposer une amélioration pour l'intégration !
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problème à résoudre
+      description: Quel problème cette fonctionnalité résoudrait-elle ?
+      placeholder: "Je suis frustré quand..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Solution proposée
+      description: Comment imaginez-vous cette fonctionnalité ?
+      placeholder: "Il serait bien de pouvoir..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considérées
+      description: Avez-vous pensé à d'autres solutions ?
+      placeholder: "J'ai aussi pensé à..."
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type de fonctionnalité
+      multiple: true
+      options:
+        - Nouvelle entité (sensor, switch, etc.)
+        - Amélioration de l'interface de configuration
+        - Nouveau service
+        - Amélioration du protocole RS-485
+        - Documentation
+        - Performance
+        - Autre
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priorité (selon vous)
+      options:
+        - Basse - Nice to have
+        - Moyenne - Serait utile
+        - Haute - Important pour moi
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Cas d'usage
+      description: Comment utiliseriez-vous cette fonctionnalité ?
+      placeholder: |
+        Je voudrais automatiser...
+        Cela me permettrait de...
+
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Contribution
+      description: Seriez-vous prêt à contribuer au développement ?
+      options:
+        - "Oui, je peux développer cette fonctionnalité"
+        - "Oui, je peux aider à tester"
+        - "Non, mais je peux fournir des informations"
+        - "Non, juste une suggestion"
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Informations supplémentaires
+      description: Mockups, exemples, références, etc.

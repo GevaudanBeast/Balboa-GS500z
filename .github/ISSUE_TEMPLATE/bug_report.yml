@@ -1,0 +1,127 @@
+name: 🐛 Bug Report
+description: Signaler un bug dans l'intégration Balboa GS500Z
+title: "[Bug] : "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci de prendre le temps de signaler ce bug !
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description du bug
+      description: Une description claire et concise du bug
+      placeholder: Décrivez le problème rencontré...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Étapes pour reproduire
+      description: Comment reproduire le problème
+      placeholder: |
+        1. Aller dans '...'
+        2. Cliquer sur '...'
+        3. Voir l'erreur
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportement attendu
+      description: Que devrait-il se passer normalement ?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Comportement actuel
+      description: Que se passe-t-il réellement ?
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version de l'intégration
+      description: Quelle version utilisez-vous ?
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: ha-version
+    attributes:
+      label: Version Home Assistant
+      description: Quelle version de HA utilisez-vous ?
+      placeholder: "2024.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: installation
+    attributes:
+      label: Méthode d'installation
+      options:
+        - HACS
+        - Manuel
+    validations:
+      required: true
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Configuration
+      description: Partagez votre configuration (masquez les infos sensibles)
+      render: yaml
+      placeholder: |
+        host: 192.168.1.100
+        port: 8899
+        window_size: 5
+        order_guard: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs pertinents
+      description: Copiez les logs de Home Assistant (avec debug activé si possible)
+      render: shell
+      placeholder: |
+        Activez les logs debug :
+
+        logger:
+          default: info
+          logs:
+            custom_components.balboa_gs500z: debug
+
+  - type: dropdown
+    id: hardware
+    attributes:
+      label: Matériel testé
+      description: Avez-vous testé sur du matériel réel ?
+      options:
+        - "Oui - spa Balboa GS500Z réel"
+        - "Non - test sans matériel"
+    validations:
+      required: true
+
+  - type: textarea
+    id: hardware-details
+    attributes:
+      label: Détails matériel (si applicable)
+      placeholder: |
+        - Modèle spa : GS500Z
+        - Clavier : VL403
+        - Module : EW11A
+        - Firmware EW11A :
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Informations supplémentaires
+      description: Tout autre contexte utile
