@@ -3,15 +3,15 @@
     "step": {
       "user": {
         "title": "Configuration du Spa Balboa GS500Z",
-        "description": "Saisissez les détails de connexion pour votre pont WiFi RS-485 EW11A",
+        "description": "Saisissez l'adresse IP et le port du module EW11A. Trouvez l'IP dans la liste des appareils de votre routeur ou l'interface web de l'EW11A (par défaut 192.168.4.1).",
         "data": {
-          "host": "Adresse IP de l'hôte",
-          "port": "Port"
+          "host": "Adresse IP (ex: 192.168.1.100)",
+          "port": "Port TCP"
         }
       }
     },
     "error": {
-      "cannot_connect": "Échec de la connexion au pont EW11A. Veuillez vérifier l'hôte et le port."
+      "cannot_connect": "Impossible de se connecter au module EW11A. Vérifiez : (1) L'adresse IP est correcte, (2) Le port est 8899, (3) Le module est allumé et connecté au WiFi."
     },
     "abort": {
       "already_configured": "Ce dispositif est déjà configuré"
@@ -21,16 +21,16 @@
     "step": {
       "init": {
         "title": "Options Balboa GS500Z",
-        "description": "Configurer les options de l'intégration",
+        "description": "Configuration avancée. Fenêtre : plus grande = plus fiable mais mises à jour plus lentes (recommandé : 5). Garde-fou : empêche les transitions de mode invalides (recommandé : activé).",
         "data": {
-          "window_size": "Taille de la fenêtre glissante (3-20)",
-          "order_guard": "Activer le garde-fou d'ordre des modes (ST→ECO→SL→ST)"
+          "window_size": "Fenêtre de validation (3-20 trames)",
+          "order_guard": "Forcer les transitions sécurisées"
         }
       }
     },
     "error": {
-      "window_size_too_small": "La taille de la fenêtre doit être d'au moins 3",
-      "window_size_too_large": "La taille de la fenêtre ne doit pas dépasser 20"
+      "window_size_too_small": "La fenêtre doit contenir au moins 3 trames pour une validation fiable",
+      "window_size_too_large": "La fenêtre ne peut pas dépasser 20 trames (serait trop lent)"
     }
   },
   "entity": {

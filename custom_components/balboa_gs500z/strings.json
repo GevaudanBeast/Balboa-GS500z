@@ -3,15 +3,15 @@
     "step": {
       "user": {
         "title": "Setup Balboa GS500Z Spa",
-        "description": "Enter the connection details for your EW11A RS-485 WiFi bridge",
+        "description": "Enter your EW11A module IP address and port. Find the IP in your router's device list or EW11A web interface (default 192.168.4.1).",
         "data": {
-          "host": "Host IP Address",
-          "port": "Port"
+          "host": "IP Address (e.g., 192.168.1.100)",
+          "port": "TCP Port"
         }
       }
     },
     "error": {
-      "cannot_connect": "Failed to connect to the EW11A bridge. Please check the host and port."
+      "cannot_connect": "Cannot connect to EW11A module. Check: (1) IP address is correct, (2) Port is 8899, (3) Module is powered on and connected to WiFi."
     },
     "abort": {
       "already_configured": "This device is already configured"
@@ -21,16 +21,16 @@
     "step": {
       "init": {
         "title": "Balboa GS500Z Options",
-        "description": "Configure the integration options",
+        "description": "Configure advanced options. Window: larger = more reliable but slower updates (recommended: 5). Guard: prevents invalid mode transitions (recommended: enabled).",
         "data": {
-          "window_size": "Sliding Window Size (3-20)",
-          "order_guard": "Enable Mode Order Guard (ST→ECO→SL→ST)"
+          "window_size": "Data Validation Window (3-20 frames)",
+          "order_guard": "Enforce Safe Mode Transitions"
         }
       }
     },
     "error": {
-      "window_size_too_small": "Window size must be at least 3",
-      "window_size_too_large": "Window size must not exceed 20"
+      "window_size_too_small": "Window size must be at least 3 frames for reliable validation",
+      "window_size_too_large": "Window size cannot exceed 20 frames (would be too slow)"
     }
   },
   "entity": {
