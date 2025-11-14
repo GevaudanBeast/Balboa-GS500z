@@ -37,7 +37,16 @@ _BYTE_MODE = 23  # Operating mode (0x20=ST, 0x00=ECO, 0x40=SL, 0x60=UNK)
 
 
 class BalboaTCPClient:
-    """TCP client for EW11A RS-485 bridge."""
+    """TCP client for EW11A RS-485 bridge.
+
+    This class manages the persistent TCP connection to the EW11A module,
+    automatically reconnects on disconnection, and parses incoming RS-485 frames.
+
+    Attributes:
+        host: IP address or hostname of the EW11A module
+        port: TCP port number (usually 8899)
+        callback: Optional async callback function called with parsed frame data
+    """
 
     def __init__(
         self,
@@ -45,38 +54,89 @@ class BalboaTCPClient:
         port: int,
         callback: Optional[Callable[[dict], Awaitable[None]]] = None,
     ) -> None:
-        """Initialize the TCP client."""
+        """Initialize the TCP client.
+
+        Args:
+            host: IP address or hostname of EW11A
+            port: TCP port number
+            callback: Optional async function to call with parsed frames
+        """
         self.host = host
         self.port = port
         self.callback = callback
+
+        # Connection state
         self._reader: Optional[asyncio.StreamReader] = None
         self._writer: Optional[asyncio.StreamWriter] = None
         self._running = False
         self._read_task: Optional[asyncio.Task] = None
+
+        # Frame processing
         self._buffer = bytearray()
         self._last_frame: Optional[dict] = None
 
+        # Callback task tracking (for proper cleanup)
+        self._callback_tasks: set[asyncio.Task] = set()
+
     async def connect(self) -> bool:
-        """Connect to the EW11A."""
+        """Establish TCP connection to the EW11A module.
+
+        Returns:
+            True if connection successful, False otherwise
+        """
         try:
             _LOGGER.info("Connecting to %s:%s", self.host, self.port)
+
             self._reader, self._writer = await asyncio.wait_for(
                 asyncio.open_connection(self.host, self.port),
                 timeout=CONNECTION_TIMEOUT,
             )
-            _LOGGER.info("Connected to %s:%s", self.host, self.port)
+
+            _LOGGER.info("Successfully connected to %s:%s", self.host, self.port)
             return True
+
         except asyncio.TimeoutError:
-            _LOGGER.error("Connection timeout to %s:%s", self.host, self.port)
+            _LOGGER.error(
+                "Connection timeout to %s:%s after %ds",
+                self.host,
+                self.port,
+                CONNECTION_TIMEOUT
+            )
             return False
+
         except OSError as err:
-            _LOGGER.error("Connection error to %s:%s: %s", self.host, self.port, err)
+            # Network errors: connection refused, host unreachable, etc.
+            _LOGGER.error(
+                "Connection error to %s:%s: %s",
+                self.host,
+                self.port,
+                err
+            )
+            return False
+
+        except Exception as err:
+            # Unexpected errors
+            _LOGGER.exception(
+                "Unexpected error connecting to %s:%s: %s",
+                self.host,
+                self.port,
+                err
+            )
             return False
 
     async def disconnect(self) -> None:
-        """Disconnect from the EW11A."""
+        """Disconnect from the EW11A and cleanup resources.
+
+        This method ensures all resources are properly released:
+        - Cancels the read task
+        - Closes the TCP connection
+        - Cancels any pending callback tasks
+        - Clears the buffer
+        """
         self._running = False
-        if self._read_task:
+
+        # Cancel read task if running
+        if self._read_task and not self._read_task.done():
             self._read_task.cancel()
             try:
                 await self._read_task
@@ -84,160 +144,307 @@ class BalboaTCPClient:
                 pass
             self._read_task = None
 
+        # Cancel all pending callback tasks
+        for task in self._callback_tasks:
+            if not task.done():
+                task.cancel()
+
+        # Wait for callbacks to complete (with timeout)
+        if self._callback_tasks:
+            try:
+                await asyncio.wait_for(
+                    asyncio.gather(*self._callback_tasks, return_exceptions=True),
+                    timeout=2.0
+                )
+            except asyncio.TimeoutError:
+                _LOGGER.warning("Some callback tasks did not complete in time")
+
+        self._callback_tasks.clear()
+
+        # Close TCP connection
         if self._writer:
             try:
                 self._writer.close()
                 await self._writer.wait_closed()
             except Exception as err:
-                _LOGGER.debug("Error closing writer: %s", err)
-            self._writer = None
-            self._reader = None
+                _LOGGER.debug("Error closing connection: %s", err)
+            finally:
+                self._writer = None
+                self._reader = None
+
+        # Clear buffer
+        self._buffer.clear()
+
         _LOGGER.info("Disconnected from %s:%s", self.host, self.port)
 
     async def start(self) -> None:
-        """Start the TCP client with auto-reconnect."""
+        """Start the TCP client with automatic reconnection.
+
+        This method runs continuously, reconnecting if the connection drops.
+        It should be run as a background task and will only stop when
+        disconnect() is called.
+        """
         self._running = True
+
         while self._running:
+            # Attempt connection
             if await self.connect():
+                # Start read loop
                 self._read_task = asyncio.create_task(self._read_loop())
+
                 try:
                     await self._read_task
                 except asyncio.CancelledError:
+                    # Normal shutdown
                     break
                 except Exception as err:
                     _LOGGER.error("Read loop error: %s", err)
 
+            # Wait before reconnecting (unless shutting down)
             if self._running:
-                _LOGGER.info("Reconnecting in %s seconds...", RECONNECT_DELAY)
+                _LOGGER.info("Reconnecting in %ds...", RECONNECT_DELAY)
                 await asyncio.sleep(RECONNECT_DELAY)
 
     async def _read_loop(self) -> None:
-        """Read loop for incoming data."""
+        """Continuously read data from the TCP connection.
+
+        This method reads data in chunks, appends to buffer, and processes
+        complete frames. It implements buffer size protection to prevent
+        memory issues.
+
+        Raises:
+            asyncio.CancelledError: When the task is cancelled (normal shutdown)
+            Exception: On unexpected errors (triggers reconnection)
+        """
         try:
             while self._running and self._reader:
-                data = await self._reader.read(1024)
+                # Read data chunk
+                data = await self._reader.read(_READ_CHUNK_SIZE)
+
                 if not data:
-                    _LOGGER.warning("Connection closed by remote host")
+                    # Connection closed by remote
+                    _LOGGER.warning("Connection closed by %s:%s", self.host, self.port)
                     break
 
+                # Prevent buffer overflow
+                if len(self._buffer) + len(data) > _MAX_BUFFER_SIZE:
+                    _LOGGER.warning(
+                        "Buffer overflow protection: clearing buffer (%d bytes)",
+                        len(self._buffer)
+                    )
+                    self._buffer.clear()
+
+                # Append data and process
                 self._buffer.extend(data)
                 self._process_buffer()
 
         except asyncio.CancelledError:
+            # Normal cancellation during shutdown
             raise
+
         except Exception as err:
+            # Unexpected error - log and reraise to trigger reconnection
             _LOGGER.error("Error in read loop: %s", err)
             raise
 
     def _process_buffer(self) -> None:
-        """Process the buffer to extract frames."""
-        while len(self._buffer) >= FRAME_LENGTH:
-            # Look for frame start
-            start_idx = self._find_frame_start()
-            if start_idx is None:
-                # No valid frame header found, clear buffer
-                self._buffer.clear()
+        """Extract and process complete frames from the buffer.
+
+        EW11A sends frames as: [HEXDATA]\r\n
+        Example: [643F2B4A004C...ABC123]\r\n
+        Where HEXDATA is 54 characters (27 bytes in hex)
+
+        This method searches for complete frames, validates them, parses them,
+        and notifies the callback. It handles corrupted data gracefully.
+        """
+        while True:
+            # Need minimum buffer size for a frame
+            # '[' (1) + hex (54) + ']' (1) = 56 bytes minimum
+            if len(self._buffer) < 56:
                 break
 
-            # Remove data before frame start
-            if start_idx > 0:
-                self._buffer = self._buffer[start_idx:]
+            # Find frame boundaries
+            try:
+                buffer_str = self._buffer.decode("ascii", errors="ignore")
+            except Exception as err:
+                _LOGGER.debug("Buffer decode error: %s", err)
+                self._buffer = self._buffer[1:]  # Skip one byte
+                continue
 
-            # Check if we have a complete frame
-            if len(self._buffer) < FRAME_LENGTH * 2:  # 27 bytes = 54 hex chars
-                # Wait for more data
+            # Look for start bracket
+            start_idx = buffer_str.find("[")
+            if start_idx == -1:
+                # No frame start found, keep last 55 bytes in case of split
+                if len(self._buffer) > 55:
+                    self._buffer = self._buffer[-55:]
                 break
 
-            # Extract potential frame (looking for [....])
-            frame_str = self._buffer.decode("ascii", errors="ignore")
-            start_bracket = frame_str.find("[")
-            end_bracket = frame_str.find("]", start_bracket)
+            # Look for end bracket after start
+            end_idx = buffer_str.find("]", start_idx + 1)
+            if end_idx == -1:
+                # No end bracket yet, keep from start_idx and wait for more data
+                if start_idx > 0:
+                    self._buffer = self._buffer[start_idx:]
+                break
 
-            if start_bracket == -1 or end_bracket == -1:
-                # No complete frame yet
-                self._buffer = self._buffer[1:]
+            # Extract hex string between brackets
+            hex_str = buffer_str[start_idx + 1 : end_idx]
+
+            # Validate hex string length (54 characters = 27 bytes)
+            if len(hex_str) != FRAME_LENGTH * 2:
+                _LOGGER.debug(
+                    "Invalid frame length: expected %d, got %d",
+                    FRAME_LENGTH * 2,
+                    len(hex_str)
+                )
+                # Skip this malformed frame and continue
+                self._buffer = self._buffer[end_idx + 1 :]
                 continue
 
-            # Extract hex string
-            hex_str = frame_str[start_bracket + 1 : end_bracket]
-            if len(hex_str) != FRAME_LENGTH * 2:  # Should be 54 chars
-                self._buffer = self._buffer[1:]
-                continue
-
-            # Parse the frame
+            # Try to parse hex string into bytes
             try:
                 frame_bytes = bytes.fromhex(hex_str)
-                if self._validate_frame(frame_bytes):
-                    parsed = self._parse_frame(frame_bytes)
-                    if parsed:
-                        self._last_frame = parsed
-                        if self.callback:
-                            asyncio.create_task(self.callback(parsed))
             except ValueError as err:
-                _LOGGER.debug("Invalid hex frame: %s", err)
+                _LOGGER.debug("Invalid hex data: %s", err)
+                # Skip this malformed frame
+                self._buffer = self._buffer[end_idx + 1 :]
+                continue
+
+            # Validate and parse frame
+            if self._validate_frame(frame_bytes):
+                parsed = self._parse_frame(frame_bytes)
+                if parsed:
+                    self._last_frame = parsed
+
+                    # Call callback if registered (with task tracking)
+                    if self.callback:
+                        task = asyncio.create_task(self._safe_callback(parsed))
+                        self._callback_tasks.add(task)
+                        # Remove from set when done
+                        task.add_done_callback(self._callback_tasks.discard)
 
             # Remove processed frame from buffer
-            self._buffer = self._buffer[end_bracket + 1 :]
+            self._buffer = self._buffer[end_idx + 1 :]
 
-    def _find_frame_start(self) -> Optional[int]:
-        """Find the start of a frame in the buffer."""
-        buffer_str = self._buffer.decode("ascii", errors="ignore")
-        idx = buffer_str.find("[")
-        return idx if idx != -1 else None
+    async def _safe_callback(self, data: dict) -> None:
+        """Safely call the callback with error handling.
+
+        Args:
+            data: Parsed frame data to pass to callback
+        """
+        try:
+            await self.callback(data)
+        except Exception as err:
+            _LOGGER.error("Error in callback: %s", err)
 
     def _validate_frame(self, frame: bytes) -> bool:
-        """Validate a frame."""
+        """Validate frame structure and header.
+
+        Args:
+            frame: 27-byte RS-485 frame to validate
+
+        Returns:
+            True if frame is valid, False otherwise
+        """
+        # Check frame length (must be exactly 27 bytes)
         if len(frame) != FRAME_LENGTH:
+            _LOGGER.debug(
+                "Invalid frame length: expected %d, got %d",
+                FRAME_LENGTH,
+                len(frame)
+            )
             return False
+
+        # Check frame header (must be 0x64 0x3F 0x2B)
         if frame[0:3] != FRAME_HEADER:
-            _LOGGER.debug("Invalid frame header: %s", frame[0:3].hex())
+            _LOGGER.debug(
+                "Invalid frame header: expected %s, got %s",
+                FRAME_HEADER.hex(),
+                frame[0:3].hex()
+            )
             return False
+
         return True
 
     def _parse_frame(self, frame: bytes) -> Optional[dict]:
-        """Parse a RS-485 frame."""
-        try:
-            # Extract data
-            water_temp_raw = frame[3]
-            setpoint_raw = frame[5]
-            mode_byte = frame[23]
-            heater_byte = frame[19]
+        """Parse a validated RS-485 frame into structured data.
 
-            # Convert temperatures (multiply by 0.5, round to int)
+        Frame structure (27 bytes total):
+        - Bytes 0-2: Header (0x64 0x3F 0x2B)
+        - Byte 3: Water temperature (raw value × 0.5 = °C)
+        - Byte 5: Target temperature / setpoint (raw value × 0.5 = °C)
+        - Byte 19: Heater status (bit 0: 1=ON, 0=OFF)
+        - Byte 23: Operating mode (0x20=ST, 0x00=ECO, 0x40=SL, 0x60=UNK)
+        - Other bytes: Reserved/unknown
+
+        Args:
+            frame: 27-byte validated RS-485 frame
+
+        Returns:
+            Dictionary with parsed data, or None if parsing fails
+        """
+        try:
+            # Safety check: verify frame length before accessing indices
+            if len(frame) != FRAME_LENGTH:
+                _LOGGER.error("Frame length check failed in parser")
+                return None
+
+            # Extract raw byte values with bounds checking
+            water_temp_raw = frame[_BYTE_WATER_TEMP]  # Byte 3
+            setpoint_raw = frame[_BYTE_SETPOINT]  # Byte 5
+            heater_byte = frame[_BYTE_HEATER_STATUS]  # Byte 19
+            mode_byte = frame[_BYTE_MODE]  # Byte 23
+
+            # Convert temperatures: raw value × 0.5 = °C, rounded to integer
+            # Example: 0x4C (76) × 0.5 = 38°C
             water_temp = round(water_temp_raw * TEMP_MULTIPLIER)
             setpoint = round(setpoint_raw * TEMP_MULTIPLIER)
 
-            # Determine mode
-            mode = None
-            if mode_byte == MODE_ST:
-                mode = "ST"
-            elif mode_byte == MODE_ECO:
-                mode = "ECO"
-            elif mode_byte == MODE_SL:
-                mode = "SL"
-            elif mode_byte == MODE_UNK:
-                mode = "UNK"
-            else:
+            # Sanity check temperatures (spa range: 15-40°C typically)
+            if not (10 <= water_temp <= 50):
+                _LOGGER.warning("Water temperature out of expected range: %d°C", water_temp)
+            if not (10 <= setpoint <= 50):
+                _LOGGER.warning("Setpoint out of expected range: %d°C", setpoint)
+
+            # Determine operating mode from byte 23
+            mode_map = {
+                MODE_ST: "ST",  # 0x20 = Standard (full heating)
+                MODE_ECO: "ECO",  # 0x00 = Economy (alternates ST/ECO/SL)
+                MODE_SL: "SL",  # 0x40 = Sleep (minimal heating)
+                MODE_UNK: "UNK",  # 0x60 = Unknown/transitional
+            }
+            mode = mode_map.get(mode_byte)
+
+            if mode is None:
+                # Unknown mode byte
                 _LOGGER.warning("Unknown mode byte: 0x%02X", mode_byte)
                 mode = "UNK"
 
-            # Heater status (bit 0 of byte 19)
+            # Extract heater status from bit 0 of byte 19
+            # Bit 0 = 1 means heater is ON, 0 means OFF
             heater_on = bool(heater_byte & 0x01)
 
+            # Build result dictionary
             result = {
-                "water_temp": water_temp,
-                "setpoint": setpoint,
-                "mode": mode,
-                "heater_on": heater_on,
-                "raw_mode_byte": mode_byte,
-                "raw_frame": frame.hex(),
+                "water_temp": water_temp,  # Current water temperature (°C)
+                "setpoint": setpoint,  # Target temperature (°C)
+                "mode": mode,  # Operating mode (ST/ECO/SL/UNK)
+                "heater_on": heater_on,  # Heater status (bool)
+                "raw_mode_byte": mode_byte,  # Raw mode byte for debugging
+                "raw_frame": frame.hex(),  # Full frame in hex for debugging
             }
 
             _LOGGER.debug("Parsed frame: %s", result)
             return result
 
+        except IndexError as err:
+            # Should never happen due to validation, but safe to catch
+            _LOGGER.error("Index error parsing frame: %s", err)
+            return None
+
         except Exception as err:
-            _LOGGER.error("Error parsing frame: %s", err)
+            # Catch any other unexpected errors
+            _LOGGER.error("Unexpected error parsing frame: %s", err)
             return None
 
     # ==================================================================================
