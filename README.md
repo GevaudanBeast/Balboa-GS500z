@@ -6,6 +6,8 @@
 [![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+> **🇫🇷 Version française** | **[🇬🇧 English version](README.en.md)**
+
 Intégration Home Assistant pour **superviser** un spa Balboa GS500Z via un module RS-485 WiFi EW11A.
 
 > 🚀 **Première installation ?** Suivez le [**Guide de démarrage rapide (5 minutes)**](QUICKSTART.md)
