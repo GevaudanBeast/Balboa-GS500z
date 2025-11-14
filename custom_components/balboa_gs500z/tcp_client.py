@@ -1,4 +1,11 @@
-"""TCP client for Balboa GS500Z RS-485 communication via EW11A."""
+"""TCP client for Balboa GS500Z RS-485 communication via EW11A.
+
+This module handles the TCP connection to the EW11A WiFi-to-RS485 bridge,
+reads incoming RS-485 frames, parses them, and notifies the coordinator of updates.
+
+The EW11A encapsulates RS-485 frames in ASCII format: [HEXDATA]\r\n
+Example: [643F2B4A004C...]\r\n (27 bytes = 54 hex characters)
+"""
 import asyncio
 import logging
 from typing import Callable, Optional
@@ -17,6 +24,16 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+# Buffer management constants
+_MAX_BUFFER_SIZE = 4096  # Maximum buffer size to prevent memory issues (bytes)
+_READ_CHUNK_SIZE = 1024  # How much data to read at once (bytes)
+
+# Frame format constants (byte positions in RS-485 frame)
+_BYTE_WATER_TEMP = 3  # Water temperature (raw value × 0.5 = °C)
+_BYTE_SETPOINT = 5  # Target temperature (raw value × 0.5 = °C)
+_BYTE_HEATER_STATUS = 19  # Heater status (bit 0: 1=ON, 0=OFF)
+_BYTE_MODE = 23  # Operating mode (0x20=ST, 0x00=ECO, 0x40=SL, 0x60=UNK)
 
 
 class BalboaTCPClient:
