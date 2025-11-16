@@ -7,11 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-01-14
+
+### Changed
+- **🔒 Major security and code quality improvements** (complete 3-phase code review)
+- **📚 Bilingual documentation** (French and English versions)
+- **⚠️ READ-ONLY MODE**: Integration converted to monitoring-only after extensive RS-485 write testing
+  - VL403 keypad uses proprietary protocol (not standard RS-485)
+  - Write operations removed from integration
+  - IR control solution documented as alternative (see IR_CONTROL.md)
+
 ### Added
-- GitHub Actions workflows for automated CI/CD
-- Release automation script
-- Development installation script
-- Validation and testing scripts
+- **Security improvements**:
+  - Buffer overflow protection in TCP client (4096 bytes max)
+  - Callback task tracking to prevent silent crashes
+  - Input validation with multiple layers
+  - Race condition protection with asyncio.Lock
+  - Comprehensive error handling throughout
+- **Documentation**:
+  - README.en.md (complete English translation)
+  - info.md (bilingual short description for HACS)
+  - LANGUAGE_VERSIONS.md (translation status tracking)
+  - IR_CONTROL.md (complete guide for ESP32 IR control solution)
+  - Enhanced docstrings and inline comments in all Python files
+- **Code quality**:
+  - Complete type hints across all modules
+  - Detailed method documentation
+  - Robust cleanup in __init__.py with timeout handling
+  - Frame validation in coordinator with sanity checks
+
+### Removed
+- Write services (`balboa_gs500z.set_temperature`, `balboa_gs500z.set_mode`)
+  - Not functional due to VL403 proprietary protocol
+  - Use physical keypad or IR control (ESP32) instead
+  - See IR_CONTROL.md for control solution
+
+### Fixed
+- TCP client resource cleanup on error
+- Proper connection timeout handling
+- Graceful handling of corrupted RS-485 frames
+- Entity availability checks now include data validation
+
+### Security
+- Buffer overflow protection in TCP client
+- Safe callback execution with exception handling
+- Input validation for all configuration parameters
+- Protection against race conditions in data updates
 
 ## [0.1.0] - 2025-01-13
 
