@@ -7,13 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2025-11-16
+
+### Changed
+- Version bump to 0.1.1
+- Minor updates and improvements
+
+## [0.1.0] - 2025-01-13
+
 ### Added
 - GitHub Actions workflows for automated CI/CD
 - Release automation script
 - Development installation script
 - Validation and testing scripts
-
-## [0.1.0] - 2025-01-13
 
 ### Added
 - Initial development release of Balboa GS500Z Home Assistant integration
