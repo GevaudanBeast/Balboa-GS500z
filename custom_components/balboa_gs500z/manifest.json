@@ -3,9 +3,11 @@
   "name": "Balboa GS500Z Spa",
   "version": "0.2.0",
   "documentation": "https://github.com/GevaudanBeast/Balboa-GS500z",
+  "issue_tracker": "https://github.com/GevaudanBeast/Balboa-GS500z/issues",
   "requirements": [],
   "codeowners": ["@GevaudanBeast"],
   "config_flow": true,
   "iot_class": "local_push",
   "integration_type": "device"
 }
+
