@@ -1,7 +1,7 @@
 {
   "domain": "balboa_gs500z",
   "name": "Balboa GS500Z Spa",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "documentation": "https://github.com/GevaudanBeast/Balboa-GS500z",
   "requirements": [],
   "codeowners": ["@GevaudanBeast"],
