@@ -162,7 +162,7 @@ esphome version
 
 ```bash
 cd ~
-git clone https://github.com/VotreUsername/Balboa-GS500z.git
+git clone https://github.com/GevaudanBeast/Balboa-GS500z.git
 cd Balboa-GS500z/esphome-tools/balboa-ir-discovery
 ```
 
