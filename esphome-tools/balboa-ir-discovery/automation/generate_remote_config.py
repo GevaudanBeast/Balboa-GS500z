@@ -33,6 +33,7 @@ substitutions:
   device_name: "balboa-ir-remote"
   friendly_name: "Balboa IR Remote"
   ir_transmitter_pin: "GPIO4"
+  fallback_ap_password: "balboa123456"  # Mot de passe du point d'accès de secours
 
 esphome:
   name: ${{device_name}}
@@ -50,7 +51,7 @@ wifi:
 
   ap:
     ssid: "${{friendly_name}} Fallback"
-    password: "balboa123456"
+    password: ${{fallback_ap_password}}
 
 api:
   encryption:

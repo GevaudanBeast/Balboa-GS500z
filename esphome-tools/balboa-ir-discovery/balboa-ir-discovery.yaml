@@ -24,6 +24,7 @@ substitutions:
   # Configuration Wi-Fi
   wifi_ssid: !secret wifi_ssid
   wifi_password: !secret wifi_password
+  fallback_ap_password: "balboa123456"  # Mot de passe du point d'accès de secours
 
   # Configuration de découverte
   discovery_delay: "2s"          # Délai entre chaque test de code
@@ -68,7 +69,7 @@ wifi:
   # Point d'accès de secours en cas de problème de connexion
   ap:
     ssid: "${friendly_name} Fallback"
-    password: "balboa123456"
+    password: ${fallback_ap_password}
 
 # Active l'API Home Assistant
 api:
