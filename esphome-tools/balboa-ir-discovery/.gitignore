@@ -1,0 +1,26 @@
+# Fichiers de secrets (ne jamais commiter !)
+secrets.yaml
+
+# Fichiers de build ESPHome
+.esphome/
+*.bin
+*.elf
+*.map
+
+# Fichiers temporaires
+*.tmp
+*.bak
+*.swp
+*~
+
+# Logs
+*.log
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
