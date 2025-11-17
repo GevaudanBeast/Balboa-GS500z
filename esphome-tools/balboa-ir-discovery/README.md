@@ -79,6 +79,17 @@ Cet outil utilise un **ESP32 avec un émetteur IR** pour tester systématiquemen
 - ✅ **Validation humaine** : Vous confirmez manuellement les codes qui fonctionnent
 - 🔄 **Re-test facile** : Re-testez un code pour confirmer
 - 📋 **Enregistrement automatique** : Les codes validés sont sauvegardés dans les logs
+- 💾 **Export JSON** : Les codes sont automatiquement exportés en JSON dans Home Assistant
+
+### 🤖 Automatisation post-découverte (NOUVEAU !)
+
+- **Export automatique JSON** : Les codes découverts sont sauvegardés automatiquement dans un sensor Home Assistant
+- **Script Python de génération** : Génère automatiquement la configuration ESPHome de votre télécommande
+- **Noms personnalisés** : Support des noms personnalisés pour chaque bouton
+- **Templates de dashboards** : 8 exemples de dashboards Lovelace prêts à l'emploi
+- **Workflow complet** : De la découverte au contrôle en 10 minutes
+
+**Voir** : [docs/AFTER_DISCOVERY.md](docs/AFTER_DISCOVERY.md) et [automation/README.md](automation/README.md)
 
 ---
 
@@ -245,6 +256,63 @@ Consultez les logs dans **ESPHome** → **LOGS** ou dans Home Assistant.
 | LED IR ne s'allume pas | Vérifiez avec une caméra de smartphone |
 | Portée trop courte | Utilisez un transistor ou rapprochez la LED |
 | Logs trop rapides | Augmentez `discovery_delay` dans le YAML |
+
+---
+
+## 🎉 Et après la découverte ?
+
+Une fois vos codes découverts, transformez-les en télécommande fonctionnelle !
+
+### Workflow automatisé (recommandé)
+
+```
+Codes découverts (JSON) → Script Python → Config ESPHome générée → Flash ESP32 → Contrôle HA
+```
+
+**Temps total : ~10 minutes**
+
+#### 1. Les codes sont déjà exportés !
+
+Les codes validés sont automatiquement disponibles dans :
+- Sensor : `sensor.balboa_ir_discovery_codes_decouverts_json`
+- Format : JSON prêt à être utilisé
+
+#### 2. Générer automatiquement la configuration
+
+```bash
+cd automation/
+python3 generate_remote_config.py \
+  --ha-entity sensor.balboa_ir_discovery_codes_decouverts_json \
+  --ha-token VOTRE_TOKEN \
+  --output balboa-ir-remote.yaml
+```
+
+#### 3. Personnaliser les noms (optionnel)
+
+Créez `custom_names.json` :
+```json
+{
+  "0x00000042": "Mode ECO",
+  "0x00000050": "Température +"
+}
+```
+
+Re-générez avec : `--names custom_names.json`
+
+#### 4. Flasher et profiter !
+
+```bash
+esphome run balboa-ir-remote.yaml
+```
+
+**✅ Vos boutons sont maintenant dans Home Assistant !**
+
+### Documentation complète
+
+- **[docs/AFTER_DISCOVERY.md](docs/AFTER_DISCOVERY.md)** - Guide complet post-découverte (3 méthodes)
+- **[automation/README.md](automation/README.md)** - Documentation du script automatique
+- **[examples/lovelace_dashboards.yaml](examples/lovelace_dashboards.yaml)** - 8 exemples de dashboards
+- **[examples/balboa-ir-remote.yaml](examples/balboa-ir-remote.yaml)** - Template de télécommande
 
 ---
 

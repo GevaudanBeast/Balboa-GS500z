@@ -1,0 +1,573 @@
+# Exemples de Dashboards Lovelace pour Balboa IR Remote
+#
+# Ce fichier contient plusieurs exemples de cartes Lovelace
+# pour contrôler votre spa via la télécommande IR.
+#
+# Copiez-collez le code YAML dans votre dashboard Home Assistant.
+
+###############################################################################
+# Exemple 1 : Dashboard simple avec boutons
+###############################################################################
+
+# Carte basique avec tous les contrôles
+type: vertical-stack
+cards:
+  # En-tête
+  - type: markdown
+    content: |
+      ## 🏊 Spa Balboa
+      Télécommande IR
+
+  # Contrôles de mode
+  - type: entities
+    title: Modes de fonctionnement
+    entities:
+      - entity: button.balboa_ir_remote_mode_eco
+        name: Mode ECO
+        icon: mdi:leaf
+      - entity: button.balboa_ir_remote_mode_standard
+        name: Mode Standard
+        icon: mdi:cog
+      - entity: button.balboa_ir_remote_mode_sleep
+        name: Mode Sleep
+        icon: mdi:power-sleep
+
+  # Contrôle température
+  - type: entities
+    title: Température
+    entities:
+      - entity: button.balboa_ir_remote_temperature_plus
+        name: Augmenter
+        icon: mdi:thermometer-plus
+      - entity: button.balboa_ir_remote_temperature_minus
+        name: Diminuer
+        icon: mdi:thermometer-minus
+
+  # Autres contrôles
+  - type: entities
+    title: Contrôles
+    entities:
+      - entity: button.balboa_ir_remote_chauffage
+        name: Chauffage
+        icon: mdi:radiator
+      - entity: button.balboa_ir_remote_jets
+        name: Jets
+        icon: mdi:air-filter
+      - entity: button.balboa_ir_remote_lumieres
+        name: Lumières
+        icon: mdi:lightbulb
+
+---
+
+###############################################################################
+# Exemple 2 : Dashboard avec boutons horizontaux
+###############################################################################
+
+type: vertical-stack
+cards:
+  - type: markdown
+    content: "## 🏊 Contrôle Spa"
+
+  # Modes (horizontal)
+  - type: horizontal-stack
+    cards:
+      - type: button
+        entity: button.balboa_ir_remote_mode_eco
+        name: ECO
+        icon: mdi:leaf
+        icon_height: 40px
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.balboa_ir_remote_mode_eco
+
+      - type: button
+        entity: button.balboa_ir_remote_mode_standard
+        name: Standard
+        icon: mdi:cog
+        icon_height: 40px
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.balboa_ir_remote_mode_standard
+
+      - type: button
+        entity: button.balboa_ir_remote_mode_sleep
+        name: Sleep
+        icon: mdi:power-sleep
+        icon_height: 40px
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.balboa_ir_remote_mode_sleep
+
+  # Température (horizontal)
+  - type: horizontal-stack
+    cards:
+      - type: button
+        entity: button.balboa_ir_remote_temperature_minus
+        name: Temp -
+        icon: mdi:minus
+        icon_height: 50px
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.balboa_ir_remote_temperature_minus
+        hold_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.balboa_ir_remote_temperature_minus
+
+      - type: markdown
+        content: |
+          <center>
+          <ha-icon icon="mdi:thermometer"></ha-icon>
+          **Température**
+          </center>
+
+      - type: button
+        entity: button.balboa_ir_remote_temperature_plus
+        name: Temp +
+        icon: mdi:plus
+        icon_height: 50px
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.balboa_ir_remote_temperature_plus
+        hold_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.balboa_ir_remote_temperature_plus
+
+  # Autres (horizontal)
+  - type: horizontal-stack
+    cards:
+      - type: button
+        entity: button.balboa_ir_remote_chauffage
+        name: Chauffage
+        icon: mdi:radiator
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.balboa_ir_remote_chauffage
+
+      - type: button
+        entity: button.balboa_ir_remote_jets
+        name: Jets
+        icon: mdi:air-filter
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.balboa_ir_remote_jets
+
+      - type: button
+        entity: button.balboa_ir_remote_lumieres
+        name: Lumières
+        icon: mdi:lightbulb
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.balboa_ir_remote_lumieres
+
+---
+
+###############################################################################
+# Exemple 3 : Dashboard avec état du spa (RS-485 + IR)
+###############################################################################
+
+# Combine l'état du spa (via RS-485) avec les contrôles IR
+type: vertical-stack
+cards:
+  # État actuel (lecture RS-485)
+  - type: entities
+    title: État du Spa
+    icon: mdi:hot-tub
+    show_header_toggle: false
+    entities:
+      - entity: climate.balboa_gs500z
+        name: Contrôle principal
+      - entity: sensor.balboa_gs500z_current_temperature
+        name: Température actuelle
+        icon: mdi:thermometer
+      - entity: sensor.balboa_gs500z_target_temperature
+        name: Température cible
+        icon: mdi:thermometer-lines
+      - entity: sensor.balboa_gs500z_mode
+        name: Mode actuel
+        icon: mdi:cog
+      - entity: binary_sensor.balboa_gs500z_heater
+        name: Chauffage
+        icon: mdi:radiator
+
+  # Télécommande IR
+  - type: entities
+    title: Télécommande IR
+    icon: mdi:remote
+    show_header_toggle: false
+    entities:
+      - type: section
+        label: Modes
+      - entity: button.balboa_ir_remote_mode_eco
+        name: Mode ECO
+      - entity: button.balboa_ir_remote_mode_standard
+        name: Mode Standard
+      - entity: button.balboa_ir_remote_mode_sleep
+        name: Mode Sleep
+
+      - type: section
+        label: Température
+      - entity: button.balboa_ir_remote_temperature_plus
+        name: Augmenter
+      - entity: button.balboa_ir_remote_temperature_minus
+        name: Diminuer
+
+      - type: section
+        label: Contrôles
+      - entity: button.balboa_ir_remote_chauffage
+        name: Chauffage
+      - entity: button.balboa_ir_remote_jets
+        name: Jets
+
+---
+
+###############################################################################
+# Exemple 4 : Dashboard minimaliste (carte unique)
+###############################################################################
+
+type: entities
+title: Spa Balboa
+icon: mdi:hot-tub
+show_header_toggle: false
+entities:
+  # Modes
+  - type: buttons
+    entities:
+      - entity: button.balboa_ir_remote_mode_eco
+        name: ECO
+        icon: mdi:leaf
+      - entity: button.balboa_ir_remote_mode_standard
+        name: ST
+        icon: mdi:cog
+      - entity: button.balboa_ir_remote_mode_sleep
+        name: SL
+        icon: mdi:power-sleep
+
+  # Température
+  - type: section
+    label: Température
+
+  - type: buttons
+    entities:
+      - entity: button.balboa_ir_remote_temperature_minus
+        icon: mdi:minus
+      - entity: button.balboa_ir_remote_temperature_plus
+        icon: mdi:plus
+
+  # Chauffage
+  - entity: button.balboa_ir_remote_chauffage
+    name: Chauffage
+    icon: mdi:radiator
+
+---
+
+###############################################################################
+# Exemple 5 : Dashboard avec picture-elements (style télécommande)
+###############################################################################
+
+type: picture-elements
+image: /local/spa_background.jpg  # Ajoutez votre image
+elements:
+  # Mode ECO
+  - type: state-icon
+    entity: button.balboa_ir_remote_mode_eco
+    icon: mdi:leaf
+    tap_action:
+      action: call-service
+      service: button.press
+      target:
+        entity_id: button.balboa_ir_remote_mode_eco
+    style:
+      top: 20%
+      left: 20%
+      color: green
+
+  # Mode Standard
+  - type: state-icon
+    entity: button.balboa_ir_remote_mode_standard
+    icon: mdi:cog
+    tap_action:
+      action: call-service
+      service: button.press
+      target:
+        entity_id: button.balboa_ir_remote_mode_standard
+    style:
+      top: 20%
+      left: 50%
+      color: blue
+
+  # Mode Sleep
+  - type: state-icon
+    entity: button.balboa_ir_remote_mode_sleep
+    icon: mdi:power-sleep
+    tap_action:
+      action: call-service
+      service: button.press
+      target:
+        entity_id: button.balboa_ir_remote_mode_sleep
+    style:
+      top: 20%
+      left: 80%
+      color: orange
+
+  # Température -
+  - type: state-icon
+    entity: button.balboa_ir_remote_temperature_minus
+    icon: mdi:minus-circle
+    tap_action:
+      action: call-service
+      service: button.press
+      target:
+        entity_id: button.balboa_ir_remote_temperature_minus
+    style:
+      top: 50%
+      left: 30%
+      font-size: 48px
+
+  # Température +
+  - type: state-icon
+    entity: button.balboa_ir_remote_temperature_plus
+    icon: mdi:plus-circle
+    tap_action:
+      action: call-service
+      service: button.press
+      target:
+        entity_id: button.balboa_ir_remote_temperature_plus
+    style:
+      top: 50%
+      left: 70%
+      font-size: 48px
+
+  # Chauffage
+  - type: state-icon
+    entity: button.balboa_ir_remote_chauffage
+    icon: mdi:radiator
+    tap_action:
+      action: call-service
+      service: button.press
+      target:
+        entity_id: button.balboa_ir_remote_chauffage
+    style:
+      top: 80%
+      left: 50%
+      color: red
+
+---
+
+###############################################################################
+# Exemple 6 : Dashboard avec scripts (appui multiple)
+###############################################################################
+
+# Nécessite de créer des scripts dans configuration.yaml
+
+# Dans configuration.yaml, ajoutez :
+#
+# script:
+#   spa_temp_up_x3:
+#     alias: "Spa: Augmenter température x3"
+#     sequence:
+#       - service: button.press
+#         target:
+#           entity_id: button.balboa_ir_remote_temperature_plus
+#       - delay: 1
+#       - service: button.press
+#         target:
+#           entity_id: button.balboa_ir_remote_temperature_plus
+#       - delay: 1
+#       - service: button.press
+#         target:
+#           entity_id: button.balboa_ir_remote_temperature_plus
+#
+#   spa_temp_down_x3:
+#     alias: "Spa: Diminuer température x3"
+#     sequence:
+#       - service: button.press
+#         target:
+#           entity_id: button.balboa_ir_remote_temperature_minus
+#       - delay: 1
+#       - service: button.press
+#         target:
+#           entity_id: button.balboa_ir_remote_temperature_minus
+#       - delay: 1
+#       - service: button.press
+#         target:
+#           entity_id: button.balboa_ir_remote_temperature_minus
+
+# Dashboard:
+type: entities
+title: Spa - Contrôles rapides
+entities:
+  - entity: script.spa_temp_up_x3
+    name: Température +3°C
+    icon: mdi:thermometer-chevron-up
+  - entity: script.spa_temp_down_x3
+    name: Température -3°C
+    icon: mdi:thermometer-chevron-down
+
+---
+
+###############################################################################
+# Exemple 7 : Dashboard avec notifications (automatisation)
+###############################################################################
+
+# Nécessite une automatisation pour afficher des notifications
+
+# Dans automations.yaml, ajoutez :
+#
+# - alias: "Spa - Notification changement mode"
+#   trigger:
+#     - platform: state
+#       entity_id:
+#         - button.balboa_ir_remote_mode_eco
+#         - button.balboa_ir_remote_mode_standard
+#         - button.balboa_ir_remote_mode_sleep
+#   action:
+#     - service: notify.mobile_app_votre_telephone
+#       data:
+#         message: "Commande envoyée au spa: {{ trigger.to_state.attributes.friendly_name }}"
+#         title: "🏊 Spa Balboa"
+
+# Dashboard simple:
+type: entities
+title: Spa Balboa
+entities:
+  - entity: button.balboa_ir_remote_mode_eco
+  - entity: button.balboa_ir_remote_mode_standard
+  - entity: button.balboa_ir_remote_temperature_plus
+  - entity: button.balboa_ir_remote_temperature_minus
+
+---
+
+###############################################################################
+# Exemple 8 : Dashboard mobile-friendly (gros boutons)
+###############################################################################
+
+type: grid
+square: false
+columns: 2
+cards:
+  # Mode ECO
+  - type: button
+    entity: button.balboa_ir_remote_mode_eco
+    name: ECO
+    icon: mdi:leaf
+    icon_height: 60px
+    tap_action:
+      action: call-service
+      service: button.press
+      target:
+        entity_id: button.balboa_ir_remote_mode_eco
+    hold_action:
+      action: more-info
+
+  # Mode Standard
+  - type: button
+    entity: button.balboa_ir_remote_mode_standard
+    name: Standard
+    icon: mdi:cog
+    icon_height: 60px
+    tap_action:
+      action: call-service
+      service: button.press
+      target:
+        entity_id: button.balboa_ir_remote_mode_standard
+
+  # Température +
+  - type: button
+    entity: button.balboa_ir_remote_temperature_plus
+    name: Temp +
+    icon: mdi:plus-circle
+    icon_height: 70px
+    tap_action:
+      action: call-service
+      service: button.press
+      target:
+        entity_id: button.balboa_ir_remote_temperature_plus
+    hold_action:
+      action: call-service
+      service: button.press
+      target:
+        entity_id: button.balboa_ir_remote_temperature_plus
+
+  # Température -
+  - type: button
+    entity: button.balboa_ir_remote_temperature_minus
+    name: Temp -
+    icon: mdi:minus-circle
+    icon_height: 70px
+    tap_action:
+      action: call-service
+      service: button.press
+      target:
+        entity_id: button.balboa_ir_remote_temperature_minus
+    hold_action:
+      action: call-service
+      service: button.press
+      target:
+        entity_id: button.balboa_ir_remote_temperature_minus
+
+  # Chauffage
+  - type: button
+    entity: button.balboa_ir_remote_chauffage
+    name: Chauffage
+    icon: mdi:radiator
+    icon_height: 60px
+    tap_action:
+      action: call-service
+      service: button.press
+      target:
+        entity_id: button.balboa_ir_remote_chauffage
+
+  # Jets
+  - type: button
+    entity: button.balboa_ir_remote_jets
+    name: Jets
+    icon: mdi:air-filter
+    icon_height: 60px
+    tap_action:
+      action: call-service
+      service: button.press
+      target:
+        entity_id: button.balboa_ir_remote_jets
+
+---
+
+###############################################################################
+# Notes d'utilisation
+###############################################################################
+
+# Pour utiliser ces dashboards :
+#
+# 1. Allez dans Home Assistant → Aperçu
+# 2. Cliquez sur les 3 points (en haut à droite) → Modifier le tableau de bord
+# 3. Cliquez sur + AJOUTER UNE CARTE
+# 4. Choisissez "Manuel" (YAML)
+# 5. Copiez-collez un des exemples ci-dessus
+# 6. Cliquez sur ENREGISTRER
+#
+# Personnalisation :
+# - Remplacez les entity_id par vos entités réelles
+# - Modifiez les couleurs, icônes, positions
+# - Ajoutez vos propres éléments
+#
+# Pour trouver les entity_id de vos boutons :
+# Outils de développement → États → Recherchez "balboa_ir_remote"

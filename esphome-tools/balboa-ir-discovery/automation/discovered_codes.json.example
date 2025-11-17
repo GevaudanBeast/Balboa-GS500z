@@ -1,0 +1,38 @@
+[
+  {
+    "protocol": "NEC",
+    "code": "0x00000042",
+    "code_dec": 66,
+    "timestamp": 12345
+  },
+  {
+    "protocol": "NEC",
+    "code": "0x00000043",
+    "code_dec": 67,
+    "timestamp": 12347
+  },
+  {
+    "protocol": "NEC",
+    "code": "0x00000044",
+    "code_dec": 68,
+    "timestamp": 12349
+  },
+  {
+    "protocol": "NEC",
+    "code": "0x00000050",
+    "code_dec": 80,
+    "timestamp": 12351
+  },
+  {
+    "protocol": "NEC",
+    "code": "0x00000051",
+    "code_dec": 81,
+    "timestamp": 12353
+  },
+  {
+    "protocol": "NEC",
+    "code": "0x00000060",
+    "code_dec": 96,
+    "timestamp": 12355
+  }
+]

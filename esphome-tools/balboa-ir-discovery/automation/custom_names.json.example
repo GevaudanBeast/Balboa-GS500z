@@ -1,0 +1,10 @@
+{
+  "0x00000042": "Mode ECO",
+  "0x00000043": "Mode Standard",
+  "0x00000044": "Mode Sleep",
+  "0x00000050": "Température +",
+  "0x00000051": "Température -",
+  "0x00000060": "Chauffage ON/OFF",
+  "0x00000070": "Jets ON/OFF",
+  "0x00000080": "Lumières ON/OFF"
+}

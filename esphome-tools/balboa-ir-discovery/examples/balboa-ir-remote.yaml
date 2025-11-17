@@ -1,0 +1,231 @@
+###############################################################################
+# Balboa GS500Z - Télécommande IR (EXEMPLE)
+###############################################################################
+# Configuration exemple pour piloter le spa via IR
+# À personnaliser selon vos codes découverts
+#
+# Version: 1.0.0
+# License: MIT
+###############################################################################
+
+substitutions:
+  device_name: "balboa-ir-remote"
+  friendly_name: "Balboa IR Remote"
+  ir_transmitter_pin: "GPIO4"
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  comment: "Télécommande IR pour spa Balboa GS500Z"
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+# Configuration Wi-Fi
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  ap:
+    ssid: "${friendly_name} Fallback"
+    password: "balboa123456"
+
+# Active l'API Home Assistant
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+# Active OTA
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+# Active le serveur web
+web_server:
+  port: 80
+
+# Active les logs
+logger:
+  level: INFO
+
+# Active le captive portal
+captive_portal:
+
+###############################################################################
+# Émetteur IR
+###############################################################################
+
+remote_transmitter:
+  pin: ${ir_transmitter_pin}
+  carrier_duty_percent: 50%
+
+###############################################################################
+# Boutons de contrôle - MODES
+###############################################################################
+
+button:
+  # Mode ECO
+  - platform: template
+    name: "Mode ECO"
+    id: mode_eco
+    icon: "mdi:leaf"
+    on_press:
+      - remote_transmitter.transmit_nec:
+          address: 0x0000
+          command: 0x42
+      - logger.log:
+          format: "📡 Envoi Mode ECO"
+          level: INFO
+
+  # Mode Standard (ST)
+  - platform: template
+    name: "Mode Standard"
+    id: mode_standard
+    icon: "mdi:cog"
+    on_press:
+      - remote_transmitter.transmit_nec:
+          address: 0x0000
+          command: 0x43
+      - logger.log:
+          format: "📡 Envoi Mode Standard"
+          level: INFO
+
+  # Mode Sleep (SL)
+  - platform: template
+    name: "Mode Sleep"
+    id: mode_sleep
+    icon: "mdi:power-sleep"
+    on_press:
+      - remote_transmitter.transmit_nec:
+          address: 0x0000
+          command: 0x44
+      - logger.log:
+          format: "📡 Envoi Mode Sleep"
+          level: INFO
+
+###############################################################################
+# Boutons de contrôle - TEMPÉRATURE
+###############################################################################
+
+  # Température +
+  - platform: template
+    name: "Température +"
+    id: temp_plus
+    icon: "mdi:thermometer-plus"
+    on_press:
+      - remote_transmitter.transmit_nec:
+          address: 0x0000
+          command: 0x50
+      - logger.log:
+          format: "📡 Envoi Température +"
+          level: INFO
+
+  # Température -
+  - platform: template
+    name: "Température -"
+    id: temp_minus
+    icon: "mdi:thermometer-minus"
+    on_press:
+      - remote_transmitter.transmit_nec:
+          address: 0x0000
+          command: 0x51
+      - logger.log:
+          format: "📡 Envoi Température -"
+          level: INFO
+
+###############################################################################
+# Boutons de contrôle - CHAUFFAGE
+###############################################################################
+
+  # Chauffage ON/OFF
+  - platform: template
+    name: "Chauffage"
+    id: heater_toggle
+    icon: "mdi:radiator"
+    on_press:
+      - remote_transmitter.transmit_nec:
+          address: 0x0000
+          command: 0x60
+      - logger.log:
+          format: "📡 Envoi Chauffage Toggle"
+          level: INFO
+
+###############################################################################
+# Boutons de contrôle - AUTRES (exemples)
+###############################################################################
+
+  # Jets / Pompes (si découvert)
+  - platform: template
+    name: "Jets"
+    id: jets_toggle
+    icon: "mdi:air-filter"
+    on_press:
+      - remote_transmitter.transmit_nec:
+          address: 0x0000
+          command: 0x70
+      - logger.log:
+          format: "📡 Envoi Jets Toggle"
+          level: INFO
+
+  # Lumières (si découvert)
+  - platform: template
+    name: "Lumières"
+    id: lights_toggle
+    icon: "mdi:lightbulb"
+    on_press:
+      - remote_transmitter.transmit_nec:
+          address: 0x0000
+          command: 0x80
+      - logger.log:
+          format: "📡 Envoi Lumières Toggle"
+          level: INFO
+
+###############################################################################
+# Sensors (optionnel)
+###############################################################################
+
+sensor:
+  # WiFi Signal
+  - platform: wifi_signal
+    name: "WiFi Signal"
+    update_interval: 60s
+
+  # Uptime
+  - platform: uptime
+    name: "Uptime"
+
+###############################################################################
+# Text sensors
+###############################################################################
+
+text_sensor:
+  # Version ESPHome
+  - platform: version
+    name: "Version ESPHome"
+
+  # WiFi Info
+  - platform: wifi_info
+    ip_address:
+      name: "Adresse IP"
+
+###############################################################################
+# Notes d'utilisation
+###############################################################################
+
+# Ce fichier est un EXEMPLE. Vous devez :
+#
+# 1. Remplacer les codes (0x42, 0x50, etc.) par vos codes découverts
+# 2. Ajouter/supprimer des boutons selon vos besoins
+# 3. Personnaliser les noms et icônes
+# 4. Créer un fichier secrets.yaml avec :
+#    - wifi_ssid: "VotreSSID"
+#    - wifi_password: "VotreMotDePasse"
+#    - api_encryption_key: "VotreCléAPI"
+#    - ota_password: "VotreMotDePasseOTA"
+#
+# Pour une génération automatique à partir de vos codes découverts :
+#   python3 automation/generate_remote_config.py --help
+#
+###############################################################################

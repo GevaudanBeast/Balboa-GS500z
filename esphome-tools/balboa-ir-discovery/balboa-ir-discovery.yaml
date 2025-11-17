@@ -169,6 +169,12 @@ globals:
     restore_value: no
     initial_value: 'false'
 
+  # Stockage des codes découverts (JSON simple)
+  - id: discovered_codes_json
+    type: std::string
+    restore_value: yes
+    initial_value: '""'
+
 ###############################################################################
 # Capteurs de progression
 ###############################################################################
@@ -247,6 +253,18 @@ text_sensor:
   # Informations version
   - platform: version
     name: "Version ESPHome"
+
+  # Codes découverts (JSON export)
+  - platform: template
+    name: "Codes Découverts (JSON)"
+    id: discovered_codes_sensor
+    icon: "mdi:code-json"
+    update_interval: 10s
+    lambda: |-
+      if (id(discovered_codes_json).empty()) {
+        return {"[]"};
+      }
+      return {id(discovered_codes_json).c_str()};
 
 ###############################################################################
 # Sélecteurs de configuration
@@ -421,6 +439,31 @@ button:
             level: WARN
         - lambda: |-
             id(validated_count)++;
+
+            // Ajouter le code au JSON
+            char entry[256];
+            const char* proto = id(protocol_selector).state.c_str();
+            uint32_t code = id(current_code);
+
+            // Format: {"protocol":"NEC","code":"0x00000042","code_dec":66,"timestamp":12345}
+            snprintf(entry, sizeof(entry),
+              "{\"protocol\":\"%s\",\"code\":\"0x%08X\",\"code_dec\":%u,\"timestamp\":%lu}",
+              proto, code, code, millis()/1000);
+
+            // Ajouter au JSON array
+            std::string current_json = id(discovered_codes_json);
+            if (current_json.empty() || current_json == "\"\"") {
+              // Premier élément
+              id(discovered_codes_json) = std::string("[") + entry + "]";
+            } else {
+              // Retirer le ] final et ajouter l'élément
+              if (current_json.back() == ']') {
+                current_json.pop_back();
+                id(discovered_codes_json) = current_json + "," + entry + "]";
+              }
+            }
+
+            ESP_LOGI("VALIDATE", "Code ajouté au JSON: %s", entry);
         - delay: 1s
 
   # ⏭️ SUIVANT - Passer au code suivant sans valider
@@ -494,6 +537,20 @@ button:
         - logger.log:
             format: "=========================================="
             level: INFO
+
+  # 🗑️ EFFACER LES CODES - Vider la liste des codes découverts
+  - platform: template
+    name: "🗑️ Effacer Codes"
+    id: clear_codes
+    on_press:
+      then:
+        - lambda: |-
+            id(discovered_codes_json) = "";
+            id(validated_count) = 0;
+            ESP_LOGI("CLEAR", "Codes découverts effacés");
+        - logger.log:
+            format: "🗑️ Codes découverts effacés"
+            level: WARN
 
   # 🔄 Restart ESP
   - platform: restart
