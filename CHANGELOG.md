@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-04-21
+
+### Changed
+- `BUS_J1_PROTOCOL.md` : réécriture complète suite à la découverte du fonctionnement
+  réel du VL403 — matrice de courts-circuits (pas de bus série multiplexé).
+  Plan EL817 porte-OR abandonné, remplacé par 4 optocoupleurs individuels
+  (TLP281-4 ou 4× EL817), un par fonction (TEMP/BLOWER/POMPE/LUMIÈRE)
+- `APPROACHES_TESTED.md` : ajout section 3.6 (plan porte-OR abandonné) et
+  section 3.7 (découverte majeure : VL403 = matrice courts-circuits avec pinout
+  complet confirmé pin1=TEMP, pin2=BLOWER, pin6=POMPE, pin7=LUMIÈRE, pin8=COMMUN,
+  et tableau des combinaisons de boutons)
+- `HARDWARE.md` : mise à jour avec le vrai fonctionnement VL403 (courts-circuits),
+  tableau des combinaisons, plan câblage optocoupleurs individuels
+
+### Fixed
+- Correction de la documentation BUS_J1_PROTOCOL.md qui décrivait à tort une
+  architecture bus multiplexé (VL700S) non applicable au VL403
+
 ## [0.2.0] - 2026-04-21
 
 ### Added
