@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from collections import deque
 from datetime import timedelta
 from typing import Any
@@ -21,6 +22,12 @@ from .const import (
 from .tcp_client import BalboaTCPClient
 
 _LOGGER = logging.getLogger(__name__)
+
+# SL memory parameters (v5.8.4)
+# After stabilisation, b23 can drop to 0x00 in SL — same as ECO.
+# We track recent SL detections and maintain the mode for this window.
+_SL_MEMORY_WINDOW_S = 120.0   # seconds
+_SL_MEMORY_MIN_OBS = 2        # minimum confirmed SL frames within the window
 
 
 class BalboaDataCoordinator(DataUpdateCoordinator):
@@ -53,7 +60,13 @@ class BalboaDataCoordinator(DataUpdateCoordinator):
             "setpoint": None,
             "mode": None,
             "heater_on": False,
+            "pump1_state": "off",
+            "blower_on": False,
+            "light_on": False,
         }
+
+        # SL memory: list of monotonic timestamps when SL (b23=0x40) was confirmed
+        self._sl_timestamps: list[float] = []
 
         # Set the callback for TCP client
         self.client.callback = self._handle_frame
@@ -88,13 +101,12 @@ class BalboaDataCoordinator(DataUpdateCoordinator):
         # Get last 3 frames
         recent_frames = list(self._frame_window)[-3:]
 
-        # Check if all 3 frames agree on the values
+        # Check if all 3 frames agree on temperature values
         water_temps = [f["water_temp"] for f in recent_frames]
         setpoints = [f["setpoint"] for f in recent_frames]
         modes = [f["mode"] for f in recent_frames]
         heaters = [f["heater_on"] for f in recent_frames]
 
-        # Check consistency
         if len(set(water_temps)) != 1:
             _LOGGER.debug("Water temp not consistent: %s", water_temps)
             return None
@@ -103,26 +115,39 @@ class BalboaDataCoordinator(DataUpdateCoordinator):
             _LOGGER.debug("Setpoint not consistent: %s", setpoints)
             return None
 
-        # Mode validation with transitoire tolerance
+        # Mode validation with SL memory and transitoire tolerance
         mode = self._validate_mode(modes)
         if mode is None:
             return None
 
-        # Heater status - majority vote
+        # Heater status — majority vote across the 3 frames
         heater_on = sum(heaters) >= 2
+
+        # Pump and accessories — majority vote for non-critical fields
+        pump_states = [f.get("pump1_state", "off") for f in recent_frames]
+        pump1_state = max(set(pump_states), key=pump_states.count)
+
+        blowers = [f.get("blower_on", False) for f in recent_frames]
+        blower_on = sum(blowers) >= 2
+
+        lights = [f.get("light_on", False) for f in recent_frames]
+        light_on = sum(lights) >= 2
 
         validated_data = {
             "water_temp": water_temps[0],
             "setpoint": setpoints[0],
             "mode": mode,
             "heater_on": heater_on,
+            "pump1_state": pump1_state,
+            "blower_on": blower_on,
+            "light_on": light_on,
         }
 
         # Order guard validation
         if self.order_guard and self._stable_data.get("mode"):
             if not self._validate_mode_transition(self._stable_data["mode"], mode):
                 _LOGGER.warning(
-                    "Invalid mode transition: %s → %s (blocked by order guard)",
+                    "Invalid mode transition: %s -> %s (blocked by order guard)",
                     self._stable_data["mode"],
                     mode,
                 )
@@ -131,96 +156,93 @@ class BalboaDataCoordinator(DataUpdateCoordinator):
         return validated_data
 
     def _validate_mode(self, modes: list[str]) -> str | None:
-        """Validate mode with transitoire tolerance."""
-        # Remove UNK (transitoire) modes
+        """Validate mode with SL memory and transitoire tolerance (v5.8.4).
+
+        After SL stabilises, b23 can fall back to 0x00 (indistinguishable from
+        ECO).  We track timestamps of confirmed SL detections and keep the mode
+        as SL for _SL_MEMORY_WINDOW_S seconds (min _SL_MEMORY_MIN_OBS frames).
+        """
+        # Strip transitoire frames
         valid_modes = [m for m in modes if m != "UNK"]
 
         if not valid_modes:
             _LOGGER.debug("All modes are UNK (transitoire)")
             return None
 
-        # Check if remaining modes are consistent
         if len(set(valid_modes)) == 1:
-            return valid_modes[0]
+            mode = valid_modes[0]
+            if mode == "SL":
+                self._record_sl()
+            return mode
 
-        # Allow SL→ECO transition if there's a UNK in between
-        if set(modes) == {"SL", "UNK", "ECO"} or set(modes) == {"ECO", "UNK"}:
+        # If the window looks like ECO but SL memory is active -> keep SL
+        apparent_eco = set(valid_modes) <= {"ECO"}
+        if apparent_eco and self._sl_memory_active():
+            _LOGGER.debug(
+                "SL memory active (%d recent obs): maintaining SL despite b23=0x00",
+                len(self._recent_sl_timestamps()),
+            )
+            return "SL"
+
+        # Allow SL->ECO transition when a UNK frame sits between SL and ECO
+        if set(modes) <= {"SL", "UNK", "ECO"}:
             return "ECO"
 
         _LOGGER.debug("Modes not consistent: %s", modes)
         return None
 
+    def _record_sl(self) -> None:
+        """Record a confirmed SL detection timestamp."""
+        now = time.monotonic()
+        self._sl_timestamps.append(now)
+        # Prune old entries to avoid unbounded growth
+        cutoff = now - _SL_MEMORY_WINDOW_S
+        self._sl_timestamps = [t for t in self._sl_timestamps if t >= cutoff]
+
+    def _recent_sl_timestamps(self) -> list[float]:
+        """Return SL timestamps within the memory window."""
+        cutoff = time.monotonic() - _SL_MEMORY_WINDOW_S
+        return [t for t in self._sl_timestamps if t >= cutoff]
+
+    def _sl_memory_active(self) -> bool:
+        """Return True if enough recent SL observations exist to trust SL state."""
+        return len(self._recent_sl_timestamps()) >= _SL_MEMORY_MIN_OBS
+
     def _validate_mode_transition(self, old_mode: str, new_mode: str) -> bool:
-        """Validate mode transition according to VL403 order."""
+        """Validate mode transition according to VL403 order (ST->ECO->SL->ST)."""
         if old_mode == new_mode:
             return True
-
-        # Check if transition is valid (ST → ECO → SL → ST)
         valid_transitions = VALID_MODE_TRANSITIONS.get(old_mode, [])
         return new_mode in valid_transitions
 
     async def _async_update_data(self) -> dict[str, Any]:
-        """Fetch data from API endpoint.
-
-        This is a fallback method. Data is primarily pushed via TCP client callback.
-        """
+        """Fallback poll — data is primarily pushed via TCP client callback."""
         if not self.client.is_connected:
             raise UpdateFailed("TCP client not connected")
-
-        # Return current stable data
         return self._stable_data
 
     async def async_set_temperature(self, temperature: int) -> bool:
-        """Set the target temperature."""
-        try:
-            command = self.client.build_setpoint_command(temperature)
-            success = await self.client.send_command(command)
+        """Set the target temperature.
 
-            if success:
-                _LOGGER.info("Setpoint command sent: %d°C", temperature)
-            else:
-                _LOGGER.error("Failed to send setpoint command")
-
-            return success
-
-        except Exception as err:
-            _LOGGER.error("Error setting temperature: %s", err)
-            return False
+        Not yet functional — write commands are not implemented (J18 is RX-only).
+        This method is a stub pending J1 bus validation.
+        """
+        _LOGGER.error(
+            "async_set_temperature called but write commands are not implemented. "
+            "J18 is read-only; awaiting J1 bus protocol validation."
+        )
+        return False
 
     async def async_set_mode(self, mode: str) -> bool:
-        """Set the spa mode."""
-        try:
-            current_mode = self._stable_data.get("mode")
-            if not current_mode:
-                _LOGGER.error("Current mode unknown, cannot set mode")
-                return False
+        """Set the spa mode.
 
-            # Validate transition if order guard is enabled
-            if self.order_guard:
-                if not self._validate_mode_transition(current_mode, mode):
-                    _LOGGER.error(
-                        "Invalid mode transition: %s → %s (blocked by order guard)",
-                        current_mode,
-                        mode,
-                    )
-                    return False
-
-            command = self.client.build_mode_command(current_mode, mode)
-            if command is None:
-                return True  # Already in target mode
-
-            success = await self.client.send_command(command)
-
-            if success:
-                _LOGGER.info("Mode command sent: %s → %s", current_mode, mode)
-            else:
-                _LOGGER.error("Failed to send mode command")
-
-            return success
-
-        except Exception as err:
-            _LOGGER.error("Error setting mode: %s", err)
-            return False
+        Not yet functional — same reason as async_set_temperature.
+        """
+        _LOGGER.error(
+            "async_set_mode called but write commands are not implemented. "
+            "J18 is read-only; awaiting J1 bus protocol validation."
+        )
+        return False
 
     @property
     def stable_data(self) -> dict[str, Any]:

@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-04-21
+
+### Added
+- `HARDWARE.md` : architecture materielle complete (GS501Z+, VL403, EW11A, ESP8266)
+- `APPROACHES_TESTED.md` : toutes les pistes explorees et leurs resultats
+- `IR_CODES.md` : codes IR confirmes (Light/Blower/Pump) + resultats brute force 248 codes
+- `BUS_J1_PROTOCOL.md` : protocole bus J1/J2 et plan de cablage EL817 (porte OR)
+
+### Changed
+- `tcp_client.py` : ajout parsing byte 17 (pompe LOW/HIGH, blower), byte 20 (lumiere),
+  exposition des bytes bruts `_b19` et `_b23` dans la trame parsee
+- `tcp_client.py` : decode mode depuis byte 23 (strictMode) au lieu de comparaisons
+  directes sur MODE_ST/ECO/SL
+- `tcp_client.py` : methodes `build_setpoint_command()` et `build_mode_command()`
+  transformees en stubs explicites (levent NotImplementedError, J18 est RX-only)
+- `coordinator.py` : ajout memoire SL v5.8.4 (fenetre 120s, seuil 2 observations)
+  pour eviter la confusion SL/ECO apres stabilisation du mode SL
+- `coordinator.py` : validation fenetre glissante etendue a pompe, blower, lumiere
+  (vote majoritaire 2/3)
+- `coordinator.py` : `async_set_temperature()` et `async_set_mode()` indiquent
+  clairement que les commandes ne sont pas implementees (retournent False)
+- `PROTOCOL.md` : mapping complet de tous les bytes confirmes (17/18/19/20/23),
+  valeurs connues de b19, algorithme v5.8.4 avec memoire SL, garde-fou d'ordre
+- `README.md` : reflet de l'etat reel du projet (lecture operationnelle,
+  controle en developpement)
+
+### Fixed
+- Correction de la detection de mode SL qui retombait incorrectement en ECO
+  apres stabilisation (b23=0x00 en SL stable)
+
 ## [0.1.1] - 2025-11-16
 
 ### Changed
