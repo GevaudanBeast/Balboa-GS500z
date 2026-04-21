@@ -1,103 +1,102 @@
-# Balboa GS500Z Home Assistant Integration
+# Balboa GS500Z/GS501Z+ — Home Assistant Integration
 
 [![Validate](https://github.com/GevaudanBeast/Balboa-GS500z/workflows/Validate/badge.svg)](https://github.com/GevaudanBeast/Balboa-GS500z/actions)
 [![Hassfest](https://github.com/GevaudanBeast/Balboa-GS500z/workflows/Hassfest/badge.svg)](https://github.com/GevaudanBeast/Balboa-GS500z/actions)
-[![Release](https://github.com/GevaudanBeast/Balboa-GS500z/workflows/Release/badge.svg)](https://github.com/GevaudanBeast/Balboa-GS500z/actions)
 [![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Intégration Home Assistant complète pour contrôler un spa Balboa GS500Z via un module RS-485 WiFi EW11A.
+Integration Home Assistant pour la surveillance du spa Balboa GS500Z/GS501Z+ via
+RS-485 (EW11A). Affiche la temperature, le mode et l'etat du chauffage en temps reel.
 
-## 🎯 Fonctionnalités
+> **Etat du projet (avril 2026) :**
+> La **lecture RS-485** via J18 est pleinement operationnelle.
+> Le **controle** (consigne, mode) est en cours de developpement via le bus J1
+> (protocole proprietaire Balboa + optocoupleurs EL817).
+> Les commandes IR fonctionnent pour Light/Blower/Pump uniquement.
 
-- **Climate Entity** : Contrôle complet du spa
-  - Température de l'eau en temps réel
-  - Réglage de la température cible
-  - Modes de fonctionnement : Standard (ST), Économique (ECO), Sommeil (SL)
+---
 
-- **Binary Sensor** : État du chauffage (actif/inactif)
+## Fonctionnalites actuelles
 
-- **Services** :
-  - `balboa_gs500z.set_temperature` : Définir la température cible
-  - `balboa_gs500z.set_mode` : Changer le mode de fonctionnement
+### Lecture (operationnelle)
 
-- **Fonctionnalités avancées** :
-  - Fenêtre glissante pour validation des données (évite les lectures erronées)
-  - Garde-fou d'ordre des modes (respecte la séquence ST→ECO→SL→ST)
-  - Auto-reconnexion TCP en cas de déconnexion
-  - Configuration modifiable après installation
+- Temperature de l'eau en temps reel
+- Consigne de temperature
+- Mode de fonctionnement : Standard (ST), Economique (ECO), Sommeil (SL)
+- Etat du chauffage (actif/inactif)
+- Etat de la pompe (OFF/LOW/HIGH)
+- Etat du blower
+- Etat de la lumiere
 
-## 📋 Prérequis
+### Controle (en developpement)
 
-- Home Assistant 2023.1 ou supérieur
-- Module RS-485 WiFi EW11A configuré en mode TCP
-- Spa Balboa GS500Z avec carte de contrôle et clavier VL403
+- Light / Blower / Pump : via codes IR (ESP8266)
+- Temperature / Mode : en attente validation bus J1 (EL817)
 
-## 🔧 Installation
+---
 
-### Méthode 1 : HACS (Recommandé)
+## Prerequis
 
-1. Ouvrez HACS dans Home Assistant
-2. Allez dans "Intégrations"
-3. Cliquez sur le menu (⋮) → "Dépôts personnalisés"
-4. Ajoutez ce dépôt : `https://github.com/GevaudanBeast/Balboa-GS500z`
-5. Recherchez "Balboa GS500Z" et installez
-6. Redémarrez Home Assistant
+- Home Assistant 2023.1 ou superieur
+- Spa Balboa GS500Z ou GS501Z+ avec panneau VL403
+- Module RS-485 WiFi EW11A configure en mode TCP Server (port 8899, 9600 baud)
 
-### Méthode 2 : Installation manuelle
+---
 
-1. Copiez le dossier `custom_components/balboa_gs500z` dans le dossier `custom_components` de votre installation Home Assistant
-2. Redémarrez Home Assistant
+## Installation
 
-## ⚙️ Configuration
+### HACS (recommande)
 
-### Configuration initiale
+1. HACS -> Integrations -> menu (...)  -> Depots personnalises
+2. Ajouter : `https://github.com/GevaudanBeast/Balboa-GS500z`
+3. Rechercher "Balboa GS500Z" et installer
+4. Redemarrer Home Assistant
 
-1. Allez dans **Configuration** → **Intégrations**
-2. Cliquez sur **+ Ajouter une intégration**
-3. Recherchez **Balboa GS500Z Spa**
-4. Entrez les informations de connexion :
-   - **Host** : Adresse IP de votre EW11A
-   - **Port** : Port TCP (par défaut : 8899)
-5. Cliquez sur **Soumettre**
+### Manuelle
 
-L'intégration va tester la connexion et créer automatiquement les entités.
+Copier `custom_components/balboa_gs500z/` dans votre dossier `custom_components/`.
 
-### Options de configuration
+---
 
-Après installation, vous pouvez configurer les options en cliquant sur **Configurer** :
+## Configuration
 
-- **Taille de la fenêtre glissante** (3-20) : Nombre de trames à conserver pour validation (défaut : 5)
-- **Garde-fou d'ordre des modes** : Active/désactive la validation de l'ordre des transitions de mode (défaut : activé)
+1. Configuration -> Integrations -> + Ajouter une integration
+2. Rechercher "Balboa GS500Z Spa"
+3. Renseigner l'adresse IP de l'EW11A et le port (defaut : 8899)
 
-## 🎮 Utilisation
+### Options
 
-### Entités créées
+- **Taille fenetre glissante** (3-20) : nombre de trames pour validation (defaut : 5)
+- **Garde-fou d'ordre** : valide les transitions ST->ECO->SL->ST (defaut : active)
 
-- `climate.spa` : Contrôle du spa
-- `binary_sensor.spa_heater` : État du chauffage
+---
 
-### Exemples d'automatisations
+## Entites creees
 
-#### Régler la température à 38°C à 18h
+| Entite | Type | Description |
+|--------|------|-------------|
+| `climate.spa` | Climate | Temperature, consigne, mode |
+| `binary_sensor.spa_heater` | Binary sensor | Etat chauffage |
+
+---
+
+## Configuration EW11A
+
+| Parametre | Valeur |
+|-----------|--------|
+| Mode | TCP Server |
+| Baud Rate | 9600 |
+| Data Bits | 8 |
+| Stop Bits | 1 |
+| Parity | None |
+| Port | 8899 |
+
+---
+
+## Exemples d'automatisations
 
 ```yaml
-automation:
-  - alias: "Spa - Chauffer à 18h"
-    trigger:
-      - platform: time
-        at: "18:00:00"
-    action:
-      - service: climate.set_temperature
-        target:
-          entity_id: climate.spa
-        data:
-          temperature: 38
-```
-
-#### Passer en mode ECO la nuit
-
-```yaml
+# Passer en mode ECO la nuit
 automation:
   - alias: "Spa - Mode ECO la nuit"
     trigger:
@@ -111,108 +110,47 @@ automation:
           preset_mode: "eco"
 ```
 
-#### Notification quand le chauffage s'allume
+---
 
-```yaml
-automation:
-  - alias: "Spa - Notification chauffage"
-    trigger:
-      - platform: state
-        entity_id: binary_sensor.spa_heater
-        to: "on"
-    action:
-      - service: notify.mobile_app
-        data:
-          message: "Le chauffage du spa est actif"
+## Architecture technique
+
+```
+custom_components/balboa_gs500z/
+  __init__.py        # Setup integration
+  manifest.json      # Metadonnees HACS
+  const.py           # Constantes protocole
+  config_flow.py     # Configuration UI
+  tcp_client.py      # Client TCP EW11A — parsing trames RS-485
+  coordinator.py     # Fenetre glissante + memoire SL (v5.8.4)
+  climate.py         # Entite climate
+  binary_sensor.py   # Entite heater
+  services.yaml      # Definition services HA
+  strings.json       # Traductions
+  translations/      # EN + FR
 ```
 
-### Utilisation des services
+---
 
-#### Service set_temperature
+## Protocole RS-485
 
-```yaml
-service: balboa_gs500z.set_temperature
-data:
-  temperature: 38
-```
+Les trames sont au format `[643F2B...]` (27 octets, 54 chars hex).
 
-#### Service set_mode
+| Byte | Role | Note |
+|------|------|------|
+| 3 | Temperature eau | valeur * 0.5 = degC |
+| 5 | Consigne | valeur * 0.5 = degC |
+| 17 | Pompe + Blower | bit7=blower, bits0-6=vitesse pompe |
+| 19 | Heater | bit0 = ON/OFF (universel tous modes) |
+| 20 | Lumiere | 0x02/0x03 = ON |
+| 23 | Mode | 0x20=ST, 0x00=ECO, 0x40=SL, 0x60=transitoire |
 
-```yaml
-service: balboa_gs500z.set_mode
-data:
-  mode: "eco"  # Options: "standard", "eco", "sleep"
-```
+Documentation complete : `PROTOCOL.md`
 
-## 🔌 Configuration EW11A
+---
 
-Le module EW11A doit être configuré en mode TCP Server :
-
-- **Mode** : TCP Server
-- **Baud Rate** : 9600
-- **Data Bits** : 8
-- **Stop Bits** : 1
-- **Parity** : None
-- **Port** : 8899 (ou autre port de votre choix)
-
-## 📡 Protocole RS-485
-
-### Structure des trames
-
-Les trames sont au format : `[643F2B...]` (27 octets = 54 caractères hex)
-
-- **Header** : `64 3F 2B`
-- **Byte 3** : Température eau (× 0.5°C)
-- **Byte 5** : Température consigne (× 0.5°C)
-- **Byte 19 bit 0** : État chauffage (1 = actif)
-- **Byte 23** : Mode
-  - `0x20` : ST (Standard)
-  - `0x00` : ECO (Économique)
-  - `0x40` : SL (Sommeil)
-  - `0x60` : Transitoire (ignoré)
-
-### Fenêtre glissante
-
-L'intégration utilise une fenêtre glissante pour valider les données :
-- Conserve les N dernières trames (défaut : 5)
-- Nécessite 3 confirmations consécutives pour valider une valeur
-- Tolérance pour les modes transitoires (0x60)
-
-### Garde-fou d'ordre
-
-Si activé, l'intégration respecte l'ordre de transition des modes du VL403 :
-- ST → ECO
-- ECO → SL (ou ECO → ST)
-- SL → ST
-
-Les transitions invalides sont bloquées pour éviter les erreurs.
-
-## 🐛 Dépannage
-
-### L'intégration ne se connecte pas
-
-- Vérifiez que l'EW11A est accessible sur le réseau
-- Testez la connexion : `telnet <IP_EW11A> 8899`
-- Vérifiez les logs Home Assistant : **Configuration** → **Logs**
-
-### Les valeurs ne se mettent pas à jour
-
-- Vérifiez que le spa envoie bien des trames (regardez les logs en mode debug)
-- Augmentez la taille de la fenêtre glissante dans les options
-- Désactivez temporairement le garde-fou d'ordre
-
-### Les commandes ne fonctionnent pas
-
-⚠️ **Note importante** : L'implémentation actuelle des commandes d'écriture (setpoint et mode) est une base à affiner selon votre configuration spécifique. Le protocole exact pour envoyer des commandes au GS500Z peut nécessiter des ajustements basés sur vos tests.
-
-Pour déboguer :
-1. Activez les logs debug (voir ci-dessous)
-2. Observez les trames dans les logs
-3. Ajustez les méthodes `build_setpoint_command()` et `build_mode_command()` dans `tcp_client.py`
+## Debogage
 
 ### Activer les logs debug
-
-Ajoutez dans `configuration.yaml` :
 
 ```yaml
 logger:
@@ -221,65 +159,42 @@ logger:
     custom_components.balboa_gs500z: debug
 ```
 
-## 🏗️ Architecture technique
+### Tester la connexion
 
+```bash
+telnet <IP_EW11A> 8899
 ```
-custom_components/balboa_gs500z/
-├── __init__.py           # Point d'entrée, setup de l'intégration
-├── manifest.json         # Métadonnées de l'intégration
-├── const.py             # Constantes
-├── config_flow.py       # Configuration initiale
-├── tcp_client.py        # Client TCP pour EW11A
-├── coordinator.py       # Coordinateur de données avec fenêtre glissante
-├── climate.py           # Entity climate (spa)
-├── binary_sensor.py     # Entity binary_sensor (chauffage)
-├── services.yaml        # Définition des services
-├── strings.json         # Chaînes de traduction
-└── translations/
-    ├── en.json         # Traduction anglaise
-    └── fr.json         # Traduction française
-```
-
-## 🔐 Sécurité
-
-Cette intégration est conçue pour une utilisation sur un réseau local. Aucune donnée n'est envoyée à l'extérieur.
-
-## 📝 Licence
-
-Ce projet est sous licence MIT.
-
-## 🤝 Contribution
-
-Les contributions sont les bienvenues ! N'hésitez pas à :
-- Signaler des bugs
-- Proposer des améliorations
-- Soumettre des pull requests
-
-## 📧 Support
-
-Pour toute question ou problème :
-- Ouvrez une issue sur GitHub
-- Consultez les logs Home Assistant
-
-## ⚠️ Avertissements
-
-- Cette intégration est fournie "telle quelle" sans garantie
-- Testez d'abord sur un environnement de développement
-- Les commandes d'écriture nécessitent une validation sur votre installation
-- Faites une sauvegarde de votre configuration Home Assistant avant installation
-
-## 🙏 Remerciements
-
-- Balboa pour le protocole GS500Z
-- La communauté Home Assistant
-- Tous les contributeurs
-
-## 📚 Ressources
-
-- [Documentation Home Assistant](https://www.home-assistant.io/)
-- [HACS](https://hacs.xyz/)
-- [Protocole RS-485](https://fr.wikipedia.org/wiki/EIA-485)
 
 ---
 
-Made with ❤️ for the Home Assistant community
+## Limitations connues
+
+- **J18 est lecture seule** : les commandes set_temperature et set_mode ne
+  sont pas implementees. Elles seront activees apres validation du bus J1.
+- **WiFi ESP marginal** (~-77 dBm) : stable uniquement alimente en USB.
+- **Mode SL** : peut etre confondu avec ECO apres stabilisation (b23=0x00).
+  Resolu par la memoire SL de 120 secondes dans le coordinateur.
+
+---
+
+## Documentation
+
+| Fichier | Contenu |
+|---------|---------|
+| `PROTOCOL.md` | Protocole RS-485 complet, mapping bytes, algo v5.8.4 |
+| `HARDWARE.md` | Architecture materielle, cablage, composants |
+| `APPROACHES_TESTED.md` | Toutes les pistes testees et leurs resultats |
+| `IR_CODES.md` | Codes IR confirmes + resultats brute force |
+| `BUS_J1_PROTOCOL.md` | Protocole bus J1/J2 + plan cablage EL817 |
+| `INSTALL.md` | Instructions d'installation detaillees |
+
+---
+
+## Licence
+
+MIT — voir `LICENSE`.
+
+## Contribution
+
+Issues et pull requests bienvenus.
+Voir `CONTRIBUTING.md` pour les conventions.

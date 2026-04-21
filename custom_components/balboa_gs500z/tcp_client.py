@@ -178,41 +178,68 @@ class BalboaTCPClient:
         return True
 
     def _parse_frame(self, frame: bytes) -> Optional[dict]:
-        """Parse a RS-485 frame."""
+        """Parse a RS-485 frame from J18.
+
+        Confirmed byte mapping (GS501Z+/VL403, captures 01/10/2025):
+          byte 3  : water temperature (raw * 0.5 = deg C)
+          byte 5  : setpoint (raw * 0.5 = deg C)
+          byte 6  : frame counter (ignored)
+          byte 17 : pump/blower state (bit7=blower, low bits=pump speed)
+          byte 19 : heater + context (bit0 = heater ON, universal across modes)
+          byte 20 : light state (0x02/0x03 = ON variants)
+          byte 23 : operating mode (0x20=ST, 0x00=ECO, 0x40=SL, 0x60=transitoire)
+        """
         try:
-            # Extract data
             water_temp_raw = frame[3]
             setpoint_raw = frame[5]
-            mode_byte = frame[23]
+            pump_byte = frame[17]
             heater_byte = frame[19]
+            light_byte = frame[20]
+            mode_byte = frame[23]
 
-            # Convert temperatures (multiply by 0.5, round to int)
             water_temp = round(water_temp_raw * TEMP_MULTIPLIER)
             setpoint = round(setpoint_raw * TEMP_MULTIPLIER)
 
-            # Determine mode
-            mode = None
-            if mode_byte == MODE_ST:
-                mode = "ST"
-            elif mode_byte == MODE_ECO:
-                mode = "ECO"
-            elif mode_byte == MODE_SL:
-                mode = "SL"
-            elif mode_byte == MODE_UNK:
+            # Byte 17: blower (bit 7) and pump speed (lower bits)
+            blower_on = bool(pump_byte & 0x80)
+            pump_raw = pump_byte & 0x7F
+            if pump_raw in (0x01, 0x08):
+                pump1_state = "low"
+            elif pump_raw in (0x02, 0x18):
+                pump1_state = "high"
+            else:
+                pump1_state = "off"
+
+            # Byte 19 bit 0: universal heater indicator (confirmed all modes)
+            heater_on = bool(heater_byte & 0x01)
+
+            # Bytes 20-21: light state
+            light_on = light_byte in (0x02, 0x03)
+
+            # Byte 23: operating mode (strict decode)
+            b23 = mode_byte & 0x60
+            if b23 == 0x60:
                 mode = "UNK"
+            elif b23 == 0x40:
+                mode = "SL"
+            elif b23 == 0x20:
+                mode = "ST"
+            elif mode_byte == 0x00:
+                mode = "ECO"
             else:
                 _LOGGER.warning("Unknown mode byte: 0x%02X", mode_byte)
                 mode = "UNK"
-
-            # Heater status (bit 0 of byte 19)
-            heater_on = bool(heater_byte & 0x01)
 
             result = {
                 "water_temp": water_temp,
                 "setpoint": setpoint,
                 "mode": mode,
                 "heater_on": heater_on,
-                "raw_mode_byte": mode_byte,
+                "pump1_state": pump1_state,
+                "blower_on": blower_on,
+                "light_on": light_on,
+                "_b19": heater_byte,
+                "_b23": mode_byte,
                 "raw_frame": frame.hex(),
             }
 
@@ -232,7 +259,7 @@ class BalboaTCPClient:
         try:
             # Encapsulate command in brackets with hex encoding
             hex_str = command.hex().upper()
-            frame = f"[{hex_str}]\r\n".encode("ascii")
+            frame = "[{0}]\r\n".format(hex_str).encode("ascii")
 
             _LOGGER.info("Sending command: %s", hex_str)
             self._writer.write(frame)
@@ -244,53 +271,37 @@ class BalboaTCPClient:
             return False
 
     def build_setpoint_command(self, setpoint: int) -> bytes:
-        """Build a setpoint change command."""
-        # Based on VL403 protocol, we need to send a command frame
-        # The exact format depends on the protocol specification
-        # This is a basic implementation that needs to be adjusted
+        """Build a setpoint change command.
 
-        # Convert setpoint to raw value (divide by 0.5)
-        setpoint_raw = int(setpoint / TEMP_MULTIPLIER)
-
-        # Build command frame (this is a simplified version)
-        # In reality, you need to follow the exact VL403 command protocol
-        command = bytearray(FRAME_HEADER)
-        command.extend([0x00] * (FRAME_LENGTH - 3))
-        command[5] = setpoint_raw  # Set the setpoint byte
-
-        # Calculate checksum if needed (depends on protocol)
-        # command[-1] = self._calculate_checksum(command[:-1])
-
-        return bytes(command)
+        NOT IMPLEMENTED — J18 is read-only; the exact write protocol for the
+        GS500Z/GS501Z bus has not been reverse-engineered.  This stub exists
+        as a placeholder for when J1 bus control (via EL817 optocoupler) is
+        validated.  Do not call in production.
+        """
+        _LOGGER.error(
+            "build_setpoint_command called but write protocol is not implemented. "
+            "J18 is RX-only; J1 bus control is pending hardware validation."
+        )
+        raise NotImplementedError(
+            "Setpoint command not implemented: J18 is read-only. "
+            "Awaiting J1 bus protocol validation."
+        )
 
     def build_mode_command(self, current_mode: str, target_mode: str) -> Optional[bytes]:
-        """Build a mode change command (cycle through modes)."""
-        # VL403 uses a button press to cycle through modes
-        # We need to calculate how many presses are needed
+        """Build a mode change command.
 
-        mode_sequence = ["ST", "ECO", "SL"]
-
-        if current_mode not in mode_sequence or target_mode not in mode_sequence:
-            _LOGGER.error("Invalid mode: current=%s, target=%s", current_mode, target_mode)
-            return None
-
-        current_idx = mode_sequence.index(current_mode)
-        target_idx = mode_sequence.index(target_mode)
-
-        # Calculate presses needed (cycling forward)
-        presses = (target_idx - current_idx) % len(mode_sequence)
-
-        if presses == 0:
-            _LOGGER.info("Already in target mode %s", target_mode)
-            return None
-
-        # Build mode button press command
-        # This is a simplified implementation
-        command = bytearray(FRAME_HEADER)
-        command.extend([0x00] * (FRAME_LENGTH - 3))
-        command[23] = 0x01  # Mode button press indicator (example)
-
-        return bytes(command)
+        NOT IMPLEMENTED — same reason as build_setpoint_command.  Mode changes
+        are performed physically via the VL403 panel.  J1 bus control (EL817
+        porte-OR) is the planned mechanism once validated.
+        """
+        _LOGGER.error(
+            "build_mode_command called but write protocol is not implemented. "
+            "J18 is RX-only; J1 bus control is pending hardware validation."
+        )
+        raise NotImplementedError(
+            "Mode command not implemented: J18 is read-only. "
+            "Awaiting J1 bus protocol validation."
+        )
 
     def get_last_frame(self) -> Optional[dict]:
         """Get the last parsed frame."""

@@ -1,350 +1,296 @@
-# Protocole RS-485 Balboa GS500Z / VL403
+# Protocole RS-485 Balboa GS500Z/GS501Z+ — Documentation technique
 
-Ce document détaille le protocole de communication RS-485 entre la carte de contrôle Balboa GS500Z et le clavier VL403.
+> **Statut :** Confirmé par captures live (GS501Z+/VL403, 01/10/2025).
+> J18 est en **lecture seule**. Les commandes d'ecriture ne sont pas implementees.
 
-## 📡 Architecture matérielle
+---
 
-```
-┌─────────────┐         RS-485         ┌──────────┐
-│  GS500Z     │◄─────────────────────►│  VL403   │
-│  (Carte)    │      9600 bauds        │ (Clavier)│
-└──────┬──────┘                        └──────────┘
-       │
-       │ RS-485
-       ▼
-┌─────────────┐
-│   EW11A     │
-│ (WiFi TCP)  │
-└──────┬──────┘
-       │
-       │ TCP/IP
-       ▼
-┌─────────────┐
-│Home Assistant│
-└─────────────┘
-```
-
-## 🔌 Configuration RS-485
-
-- **Baud rate** : 9600
-- **Data bits** : 8
-- **Stop bits** : 1
-- **Parity** : None
-- **Flow control** : None
-
-## 📦 Format des trames
-
-### Structure générale
-
-Toutes les trames sont encapsulées entre crochets et encodées en hexadécimal :
+## 1. Architecture de communication
 
 ```
-[643F2B...] (54 caractères hex = 27 octets)
+GS501Z+ (carte)
+     |
+     |-- J1/J2 (RJ "Phone Plug")  --> protocole proprietaire Balboa (PAS RS-485)
+     |                                 VL403 (afficheur) + module IR Balboa
+     |
+     +-- J18 (3 pins)             --> RS-485, lecture seule, 9600 baud
+                                       |
+                                  EW11A (WiFi)
+                                       |
+                                  TCP :8899
+                                       |
+                                  Home Assistant
 ```
 
-### Détail des octets
+**Important :**
+- J1/J2 utilisent le protocole proprietaire Balboa (bus clavier), pas du RS-485.
+- Brancher un EW11A sur J1/J2 provoque un cyclage de la pompe (1s ON/1s OFF).
+- J18 est le seul port RS-485, et il est en reception seule (RX-only).
 
-| Byte | Offset | Description | Valeur | Conversion |
-|------|--------|-------------|--------|------------|
-| 0-2  | 0-2    | Header fixe | `64 3F 2B` | - |
-| 3    | 3      | Température eau | `0x00-0xFF` | `× 0.5°C` puis arrondi |
-| 4    | 4      | ? | - | - |
-| 5    | 5      | Température consigne | `0x00-0xFF` | `× 0.5°C` puis arrondi |
-| 6    | 6      | Compteur | Variable | Ignoré |
-| 7-18 | 7-18   | Données diverses | - | - |
-| 19   | 19     | État chauffage | bit 0 | `0` = OFF, `1` = ON |
-| 20-22| 20-22  | ? | - | - |
-| 23   | 23     | Mode de fonctionnement | Voir tableau | - |
-| 24-26| 24-26  | ? / Checksum ? | - | - |
+---
 
-### Modes de fonctionnement (Byte 23)
+## 2. Configuration RS-485 (J18 via EW11A)
 
-| Valeur | Code | Nom | Description |
-|--------|------|-----|-------------|
-| `0x20` | ST   | Standard | Mode normal |
-| `0x00` | ECO  | Économique | Économie d'énergie |
-| `0x40` | SL   | Sleep | Mode sommeil |
-| `0x60` | UNK  | Transitoire | État intermédiaire (ignoré) |
+| Parametre   | Valeur |
+|-------------|--------|
+| Baud rate   | 9600   |
+| Data bits   | 8      |
+| Stop bits   | 1      |
+| Parity      | None   |
+| Flow ctrl   | None   |
+| Mode EW11A  | TCP Server, port 8899 |
 
-## 📊 Exemples de trames
+---
 
-### Exemple 1 : Mode ST, 37°C, consigne 38°C, chauffage ON
+## 3. Format des trames
+
+### 3.1 Structure generale
+
+Les trames sont encapsulees entre crochets, encodees en hexadecimal :
 
 ```
-[643F2B4A004C01234567890ABCDEF01020304...]
- │││││ │  │                       │
- │││││ │  └─ Consigne: 0x4C = 76 × 0.5 = 38°C
- │││││ └──── Eau: 0x4A = 74 × 0.5 = 37°C
- ││││└────── Header: 2B
- │││└─────── Header: 3F
- ││└──────── Header: 64
- │└───────── [
- └────────── Début trame
-
-... suite de la trame ...
-...│
-...└─ Mode: byte[23] = 0x20 = ST
+[643F2B xx xx xx xx xx xx xx xx xx xx xx xx xx xx xx xx xx xx xx xx xx xx xx xx xx]
+ ^^^^^^                                                                             ^
+ Header (3 bytes fixes)                                                  27 bytes = 54 chars hex
 ```
 
-Byte 19 = `0x01` → bit 0 = 1 → Chauffage ON
+- **Header fixe :** `64 3F 2B` (bytes 0-2)
+- **Longueur :** 27 octets, soit 54 caracteres hexadecimaux entre `[` et `]`
 
-### Exemple 2 : Mode ECO, 35°C, consigne 37°C, chauffage OFF
+### 3.2 Mapping des octets (confirme)
 
-```
-[643F2B460048... byte[19]=0x00 ... byte[23]=0x00 ...]
-       │  │                          │
-       │  └─ Consigne: 0x48 = 72 × 0.5 = 36°C
-       └──── Eau: 0x46 = 70 × 0.5 = 35°C
-                                      └─ Mode: 0x00 = ECO
-```
+| Byte | Role | Formule / Valeurs | Statut |
+|------|------|-------------------|--------|
+| 0-2  | Header fixe | `64 3F 2B` | Confirme |
+| 3    | Temperature eau | `valeur * 0.5` -> degC, arrondi entier | Confirme |
+| 4    | Inconnu | — | Non identifie |
+| 5    | Consigne temperature | `valeur * 0.5` -> degC, arrondi entier | Confirme |
+| 6    | Compteur de trame | Incremente, ignore | Confirme |
+| 7    | Mode (obsolete) | `0x12`=SL, `0x18`=ST — peu fiable | Non utilise (remplace par b23) |
+| 8-16 | Inconnus | — | Non identifies |
+| 17   | Pompe / Blower | Voir tableau 3.3 | Confirme |
+| 18   | Contexte heater/mode | Combine avec b23 | Confirme |
+| 19   | Etat chauffage | **bit 0 = indicateur universel** | Confirme |
+| 20   | Lumiere | `0x02` ou `0x03` = ON | Confirme |
+| 21   | Lumiere (variante) | Complementaire b20 | Confirme |
+| 22   | Inconnu | — | Non identifie |
+| 23   | Mode operatoire | Voir tableau 3.4 | Confirme |
+| 24-26| Inconnus / checksum ? | — | Non identifies |
 
-Byte 19 = `0x00` → bit 0 = 0 → Chauffage OFF
+### 3.3 Byte 17 — Pompe et Blower
 
-## 🔄 Logique de validation (fenêtre glissante)
+| Masque | Valeur | Signification |
+|--------|--------|---------------|
+| `b17 & 0x80` | `0x80` | Blower ON |
+| `b17 & 0x80` | `0x00` | Blower OFF |
+| `b17 & 0x7F` | `0x01` ou `0x08` | Pompe 1 vitesse LOW |
+| `b17 & 0x7F` | `0x02` ou `0x18` | Pompe 1 vitesse HIGH |
+| `b17 & 0x7F` | `0x00` | Pompe OFF |
 
-Pour éviter les lectures erronées, l'intégration utilise une fenêtre glissante :
+### 3.4 Byte 19 — Etat chauffage (confirme)
 
-### Principe
+Le **bit 0** est l'indicateur universel du chauffage, valable dans tous les modes :
 
-```
-┌─────────────────────────────────────┐
-│  Fenêtre glissante (taille N = 5)  │
-├─────────────────────────────────────┤
-│  [Trame 1] [Trame 2] [Trame 3]      │
-│  [Trame 4] [Trame 5]                │
-└─────────────────────────────────────┘
-         │
-         ▼
-  ┌──────────────────┐
-  │  Validation :    │
-  │  3 dernières     │
-  │  trames          │
-  │  identiques ?    │
-  └──────────────────┘
-         │
-         ▼
-  ┌──────────────────┐
-  │  Données stables │
-  │  publiées dans   │
-  │  Home Assistant  │
-  └──────────────────┘
-```
+| Valeur b19 | bit 0 | Heater | Mode | Contexte |
+|------------|-------|--------|------|----------|
+| `0x41`     | 1     | ON     | ST   | Chauffage actif en Standard |
+| `0xC1`     | 1     | ON     | ST   | Variante ST |
+| `0xC2`     | 0     | OFF    | ECO  | Idle en Economique |
+| `0x44`     | 0     | OFF    | SL   | Idle en Sommeil |
+| `0xC4`     | 0     | OFF    | SL   | Variante idle SL |
+| `0x42`     | 0     | OFF    | —    | Transitoire ECO->SL |
 
-### Algorithme
+Detection : `heater_on = bool(b19 & 0x01)`
 
-1. Recevoir une nouvelle trame
-2. Ajouter à la fenêtre (FIFO, taille max N)
-3. Prendre les 3 dernières trames
-4. Vérifier la cohérence :
-   - Température eau : identique sur les 3 trames
-   - Consigne : identique sur les 3 trames
-   - Mode : identique sur les 3 trames (hors `UNK`)
-   - Chauffage : vote majoritaire (≥2 sur 3)
-5. Si cohérent → mettre à jour les données stables
-6. Si incohérent → attendre la prochaine trame
+### 3.5 Byte 23 — Mode operatoire (confirme)
 
-### Tolérance pour les modes transitoires
+| Valeur | Masque `b23 & 0x60` | Mode | Nom | Description |
+|--------|---------------------|------|-----|-------------|
+| `0x20` | `0x20` | ST  | Standard  | Mode normal, heater actif selon besoin |
+| `0x00` | `0x00` | ECO | Economique | Heater uniquement pendant filtration |
+| `0x40` | `0x40` | SL  | Sommeil   | 0% activation heater |
+| `0x60` | `0x60` | UNK | Transitoire | Etat intermediaire, ignore |
 
-Le mode `0x60` (UNK) est ignoré dans la validation. Exemple :
+**Attention :** En mode SL stable, b23 peut revenir a `0x00` apres stabilisation
+(identique a ECO). Voir section 5 pour l'algorithme de detection avec memoire SL.
 
-```
-Trame 1 : Mode = SL (0x40)
-Trame 2 : Mode = UNK (0x60)  ← Ignoré
-Trame 3 : Mode = ECO (0x00)
+---
 
-→ Transition validée : SL → ECO
-```
+## 4. Exemples de trames
 
-## 🛡️ Garde-fou d'ordre des modes
-
-Le clavier VL403 impose un ordre de transition des modes :
+### Mode ST, 37.0°C eau, consigne 38.0°C, chauffage ON
 
 ```
-    ST (0x20)
-     │     ▲
-     ▼     │
-   ECO (0x00)
-     │     ▲
-     ▼     │
-    SL (0x40)
-     └─────┘
+Byte 3  = 0x4A (74) -> 74 * 0.5 = 37.0°C eau
+Byte 5  = 0x4C (76) -> 76 * 0.5 = 38.0°C consigne
+Byte 19 = 0x41      -> bit0=1 -> Heater ON
+Byte 23 = 0x20      -> ST
 ```
 
-### Transitions valides
+### Mode ECO, 35.0°C eau, chauffage OFF
+
+```
+Byte 3  = 0x46 (70) -> 70 * 0.5 = 35.0°C eau
+Byte 19 = 0xC2      -> bit0=0 -> Heater OFF
+Byte 23 = 0x00      -> ECO
+```
+
+### Mode SL stable (b23 retombe a 0x00)
+
+```
+Byte 19 = 0x44      -> bit0=0 -> Heater OFF
+Byte 23 = 0x00      -> ECO apparent, MAIS memoire SL active -> interprete comme SL
+```
+
+---
+
+## 5. Algorithme de detection de mode v5.8.4
+
+### 5.1 Detection primaire par byte 23
+
+```python
+def strict_mode_from_b23(b23):
+    if (b23 & 0x60) == 0x60: return "UNK"   # transitoire
+    if (b23 & 0x40) == 0x40: return "SL"
+    if (b23 & 0x20) == 0x20: return "ST"
+    if b23 == 0x00:          return "ECO"
+    return "UNK"
+```
+
+### 5.2 Memoire SL (probleme de stabilisation)
+
+Apres plusieurs minutes en mode SL, b23 peut passer de `0x40` a `0x00`.
+Sans memoire, cela serait interprete a tort comme ECO.
+
+**Parametres :**
+- Fenetre : 120 secondes
+- Seuil : 2 observations minimum de b23=`0x40` dans la fenetre
+
+**Algorithme :**
+1. Chaque fois que b23=`0x40` est confirme dans la fenetre glissante -> enregistrer le timestamp
+2. Si la fenetre glissante retourne "ECO" (b23=`0x00`) MAIS >= 2 timestamps SL dans les 120s -> retourner "SL"
+3. La memoire expire naturellement si b23 reste a `0x00` plus de 120s
+
+### 5.3 Garde-fou d'ordre VL403
+
+Le panneau VL403 impose un cycle physique de transition :
+
+```
+ST --> ECO --> SL --> ST --> ...
+```
+
+Transitions valides :
 
 | De  | Vers | Valide |
 |-----|------|--------|
-| ST  | ECO  | ✅ Oui |
-| ST  | SL   | ❌ Non |
-| ECO | SL   | ✅ Oui |
-| ECO | ST   | ✅ Oui |
-| SL  | ST   | ✅ Oui |
-| SL  | ECO  | ⚠️ Oui si mode transitoire (0x60) détecté |
+| ST  | ECO  | Oui    |
+| ST  | SL   | Non    |
+| ECO | SL   | Oui    |
+| ECO | ST   | Oui    |
+| SL  | ST   | Oui    |
+| SL  | ECO  | Non (sauf si UNK transitoire detecte) |
 
-### Implémentation
+Si le garde-fou est active, les transitions invalides sont bloquees avec un log warning.
 
-Si le garde-fou est activé, l'intégration bloque les transitions invalides :
+### 5.4 Fenetre glissante de validation
 
-```python
-# Exemple : demande de passage ST → SL
-Current mode: ST
-Target mode: SL
+Pour eviter les faux positifs :
+- Conserver les N dernieres trames (defaut : 5)
+- Valider sur les 3 dernieres trames consecutives
+- Temperatures : identiques sur les 3 trames
+- Mode : identique sur les 3 trames (hors UNK)
+- Heater : vote majoritaire (>= 2/3)
+- Pompe / Blower / Lumiere : vote majoritaire (>= 2/3)
 
-→ Transition invalide (bloquée)
-→ Log warning
-→ Commande non envoyée
-```
+### 5.5 Algorithme alternatif (3 regles statistiques)
 
-Pour passer de ST à SL, il faut passer par ECO :
-1. `ST → ECO`
-2. Attendre validation
-3. `ECO → SL`
+Si la detection par b23 est insuffisante, cet algorithme statistique peut complementer :
 
-## 🔧 Commandes d'écriture (injection RS-485)
+1. Heater ON > 50% du temps sur la fenetre -> ST
+2. Heater OFF + ecart eau/consigne > 6°C -> SL
+3. Heater OFF + ecart eau/consigne < 4°C -> ECO
 
-⚠️ **Cette section décrit la logique théorique. L'implémentation exacte doit être validée sur votre installation.**
+---
 
-### Principe général
+## 6. Transitions de mode (observations terrain)
 
-Le clavier VL403 envoie des commandes à la carte GS500Z pour :
-- Changer la consigne de température
-- Changer le mode (bouton mode)
+Captures realisees le 01/10/2025, GS501Z+/VL403.
 
-L'intégration doit reproduire ces commandes.
-
-### Commande : Changer la consigne
-
-**Hypothèse** : La trame de commande ressemble à la trame de lecture, mais avec un code spécifique.
+### ST -> ECO
 
 ```
-Structure supposée :
-[643F2B??00XX...] où XX = nouvelle consigne
-
-Exemple : Changer la consigne à 39°C
-39°C ÷ 0.5 = 78 = 0x4E
-
-Trame : [643F2B00004E...]
-              │   │
-              │   └─ Consigne (byte 5)
-              └───── Indicateur de commande ?
+Avant    : b19=0x41, b23=0x20 (ST, heater ON)
+Transition : b19=0x41 -> 0xC1 -> 0xC2 ; b23=0x20 -> 0x00
+Apres    : b19=0xC2, b23=0x00 (ECO, heater OFF)
 ```
 
-**Implémentation actuelle** (`tcp_client.py:build_setpoint_command`) :
-```python
-def build_setpoint_command(self, setpoint: int) -> bytes:
-    setpoint_raw = int(setpoint / TEMP_MULTIPLIER)
-    command = bytearray(FRAME_HEADER)
-    command.extend([0x00] * (FRAME_LENGTH - 3))
-    command[5] = setpoint_raw
-    # TODO: Ajouter checksum si nécessaire
-    return bytes(command)
-```
-
-### Commande : Changer le mode
-
-**Hypothèse** : Le mode est changé par un "appui bouton" virtuel qui cycle à travers les modes.
+### ECO -> SL
 
 ```
-Cycle des modes :
-ST → ECO → SL → ST → ...
-
-Pour aller de ST à SL :
-- 2 appuis : ST → ECO → SL
-
-Pour aller de ECO à ST :
-- 1 appui : ECO → SL → ST
-ou
-- 2 appuis : ECO → SL → ST
+Avant    : b19=0xC2, b23=0x00 (ECO)
+Transition : b19=0xC2 -> 0x42 -> 0x44 ; b23=0x00 -> 0x40
+Apres    : b19=0x44, b23=0x40 puis 0x00 (SL stable)
 ```
 
-**Implémentation actuelle** (`tcp_client.py:build_mode_command`) :
-```python
-def build_mode_command(self, current_mode: str, target_mode: str) -> Optional[bytes]:
-    mode_sequence = ["ST", "ECO", "SL"]
-    current_idx = mode_sequence.index(current_mode)
-    target_idx = mode_sequence.index(target_mode)
-    presses = (target_idx - current_idx) % len(mode_sequence)
+### SL -> ST
 
-    # TODO: Implémenter la commande de "presse bouton"
-    command = bytearray(FRAME_HEADER)
-    command.extend([0x00] * (FRAME_LENGTH - 3))
-    command[23] = 0x01  # Indicateur bouton mode ?
-    return bytes(command)
+```
+Avant    : b19=0x44, b23=0x00 (SL masque)
+Transition : b19=0x44 -> 0xC1 ; b23=0x00 -> 0x40 -> 0x60 -> 0x20
+Apres    : b19=0xC1, b23=0x20 (ST)
 ```
 
-### À faire pour finaliser les commandes
+---
 
-1. **Capturer les trames réelles du VL403** :
-   - Utiliser un analyseur RS-485
-   - Observer les trames envoyées quand on change la consigne
-   - Observer les trames envoyées quand on change le mode
+## 7. Etat des commandes d'ecriture
 
-2. **Implémenter le checksum** (si nécessaire) :
-   - Analyser si les trames ont un checksum
-   - Implémenter le calcul (CRC, XOR, somme ?)
+> **J18 est en LECTURE SEULE.** Aucune commande ne peut etre envoyee via J18/EW11A.
 
-3. **Tester et ajuster** :
-   - Envoyer les commandes au GS500Z
-   - Observer la réponse
-   - Ajuster le format si nécessaire
+Le seul moyen de controler le spa (consigne, mode) est via le bus J1 (protocole
+proprietaire Balboa). Voir `BUS_J1_PROTOCOL.md` pour le plan d'integration.
 
-## 🧪 Débogage
+Les methodes `build_setpoint_command()` et `build_mode_command()` dans
+`tcp_client.py` sont des stubs qui levent `NotImplementedError`.
 
-### Activer les logs détaillés
+---
+
+## 8. Debogage
+
+### Activer les logs debug
 
 ```yaml
-# configuration.yaml
+# configuration.yaml Home Assistant
 logger:
   default: info
   logs:
     custom_components.balboa_gs500z: debug
 ```
 
-### Observer les trames brutes
-
-Les logs debug affichent :
-- Toutes les trames reçues (hex)
-- Les trames parsées (valeurs décodées)
-- Les validations de la fenêtre glissante
-- Les commandes envoyées
-
-Exemple de log :
-```
-[custom_components.balboa_gs500z.tcp_client] Parsed frame: {
-  'water_temp': 37,
-  'setpoint': 38,
-  'mode': 'ST',
-  'heater_on': True,
-  'raw_mode_byte': 32,
-  'raw_frame': '643f2b4a004c...'
-}
-```
-
 ### Tester la connexion TCP
 
 ```bash
-# Depuis la ligne de commande
 telnet <IP_EW11A> 8899
-
-# Vous devriez voir les trames arriver :
-[643F2B...]
-[643F2B...]
-...
+# Les trames defilent :
+# [643F2B...]
+# [643F2B...]
 ```
 
-## 📚 Références
+### Format de log (frame parsee)
 
-- [EIA-485 (Wikipedia)](https://fr.wikipedia.org/wiki/EIA-485)
-- [Home Assistant Developer Docs](https://developers.home-assistant.io/)
-- [Balboa Documentation](https://www.balboawatergroup.com/)
-
-## 🤝 Contribuer
-
-Si vous découvrez des détails supplémentaires sur le protocole, n'hésitez pas à :
-1. Ouvrir une issue
-2. Partager vos captures de trames
-3. Proposer une pull request
+```
+[custom_components.balboa_gs500z.tcp_client] Parsed frame: {
+  'water_temp': 37, 'setpoint': 38, 'mode': 'ST', 'heater_on': True,
+  'pump1_state': 'low', 'blower_on': False, 'light_on': False,
+  '_b19': 65, '_b23': 32, 'raw_frame': '643f2b4a004c...'
+}
+```
 
 ---
 
-**Note importante** : Ce document est basé sur l'analyse empirique du protocole. Certains détails peuvent nécessiter des ajustements selon votre configuration matérielle.
+## 9. References
+
+- Manuel GS500Z (PDF) : schemas connecteurs J1/J2/J18, DIP switches
+- Manuel VL403 (PDF) : documentation panneau
+- [MagnusPer/Balboa-GS510SZ](https://github.com/MagnusPer/Balboa-GS510SZ) : reference architecture bus J1
+- `HARDWARE.md` : architecture materielle complete
+- `BUS_J1_PROTOCOL.md` : protocole bus J1/J2 et plan de cablage EL817
