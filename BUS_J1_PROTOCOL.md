@@ -1,153 +1,175 @@
-# Protocole bus J1/J2 et plan de cablage EL817
+# Protocole bus J1/J2 et plan de câblage ESP + optocoupleurs
 
-> Ce document decrit le protocole proprietaire Balboa sur J1/J2 et le plan
-> d'integration via 2 optocoupleurs EL817 en porte OR.
-
----
-
-## 1. Protocole bus J1/J2
-
-J1 et J2 utilisent le meme protocole proprietaire Balboa (PAS du RS-485).
-
-### Brochage RJ (T568B confirme)
-
-| PIN | Signal | Description |
-|-----|--------|-------------|
-| 1   | —      | Ne jamais connecter |
-| 2   | —      | Ne jamais connecter |
-| 3   | Button data | Ligne multiplexee — TOUS les boutons (1 seule ligne) |
-| 4   | GND    | Masse |
-| 5   | Display data | Donnees afficheur 7 segments |
-| 6   | Clock  | Horloge synchronisation |
-| 7   | 5V     | Alimentation |
-
-### Protocole (reference MagnusPer/VL700S, a valider sur VL403)
-
-- Horloge (PIN6) : pulse 7 fois par chunk de display data
-- Total : 39 bits display data + 3 bits button data = 42 pulses par cycle
-- Format affichage : BCD -> segments 7-segments LCD
-
-**Important :** Ces timings sont ceux du VL700S (MagnusPer). Le VL403 utilise
-des capteurs piezo au lieu de boutons mecaniques — les timings ou le multiplexage
-peuvent differer. A valider experimentalement.
-
-### Principe Button data (PIN3)
-
-Tous les boutons du VL403 sont multiplexes sur 1 seule ligne (PIN3).
-Les appuis sont encodes en position dans le cycle de 42 pulses.
+> **Découverte confirmée (avril 2026) :** Le VL403 fonctionne en matrice de
+> contacts par court-circuit. L'architecture porte OR (plan MagnusPer) est
+> incompatible et a été abandonnée. Voir `APPROACHES_TESTED.md` section 3.6.
 
 ---
 
-## 2. Plan de cablage — Porte OR avec 2 EL817
+## 1. Fonctionnement réel du VL403
 
-### Architecture
+### Principe : matrice de courts-circuits
 
-```
-J1 GS501Z+ <-- splitter RJ45 (male -> 2 femelles)
-                  |
-                  +-- femelle A --> VL403 d'occasion (panneau physique)
-                  |
-                  +-- femelle B --> ESP8266 via 2 EL817 en porte OR
-```
+Chaque bouton du VL403 est un **simple court-circuit** entre :
+- Le fil **COMMUN** (Marron, pin 8) — référence commune à tous les boutons
+- Le fil de la **fonction** (pin 1, 2, 6 ou 7)
 
-La porte OR sur PIN3 permet :
-- Au VL403 de fonctionner normalement (ses signaux passent via EL817-A)
-- A l'ESP8266 d'injecter des signaux virtuels (via EL817-B)
-- L'isolation optique protege l'ESP et le bus
+Il n'y a pas de bus série multiplexé, pas de timing complexe, pas de protocole.
+Un appui = un contact électrique fermé entre deux fils.
 
-### Schema porte OR EL817
+### Pinout RJ45 VL403 (confirmé)
 
-```
-PIN7 (5V) ----+---- EL817-A collecteur (broche 4)
-              |
-              +---- EL817-B collecteur (broche 4)
-              |
-              +---- PIN3 (Button data) du splitter
+Orientation : connecteur face à soi, ergot de verrouillage en bas.
 
-VL403 PIN3 --> EL817-A anode (broche 1)
-EL817-A cathode (broche 2) --> GND
-EL817-A emetteur (broche 3) --> GND
+| Pin RJ45 | Couleur fil clavier | Signal | Câble T568B |
+|----------|--------------------|---------|--------------------|
+| 1 | Gris | Bouton **TEMP** | Blanc/Orange |
+| 2 | Orange | Bouton **BLOWER** | Orange |
+| 3 | Noir | Non utilisé (boutons) | Blanc/Vert |
+| 4 | Rouge | Non utilisé (boutons) | Bleu |
+| 5 | Vert | Non utilisé (boutons) | Blanc/Bleu |
+| 6 | Jaune | Bouton **POMPE** | Vert |
+| 7 | Bleu | Bouton **LUMIÈRE** | Blanc/Marron |
+| 8 | Marron | **COMMUN** (référence) | Marron |
 
-ESP D8/GPIO15 --> [220R] --> EL817-B anode (broche 1)
-EL817-B cathode (broche 2) --> GND
-EL817-B emetteur (broche 3) --> GND
-```
+### Combinaisons de boutons
 
-### Tableau de cablage complet
+| Action | Court-circuit requis | Pins |
+|--------|---------------------|------|
+| Blower ON/OFF | Marron + Orange | 8 + 2 |
+| Pompe LOW/HIGH | Marron + Jaune | 8 + 6 |
+| Lumière ON/OFF | Marron + Bleu | 8 + 7 |
+| Temp +/- | Marron + Gris | 8 + 1 |
+| **Mode (ST→ECO→SL)** | Marron + Gris + Bleu | 8 + 1 + 7 |
+| **Cycles filtration** | Marron + Gris + Jaune | 8 + 1 + 6 |
 
-| # | De | Via | A | Dupont |
-|---|-----|-----|---|--------|
-| 1 | Splitter PIN7 (5V) | direct | EL817-A broche 4 (collecteur) | — |
-| 2 | EL817-A broche 4 | direct | EL817-B broche 4 (collecteur) | — |
-| 3 | EL817-A+B broche 4 | direct | Splitter PIN3 (Button data) | Blanc |
-| 4 | VL403 PIN3 | direct | EL817-A broche 1 (anode) | — |
-| 5 | EL817-A broche 2 (cathode) | direct | GND | Noir |
-| 6 | EL817-A broche 3 (emetteur) | direct | GND | Noir |
-| 7 | ESP D8/GPIO15 | 220R | EL817-B broche 1 (anode) | Blanc |
-| 8 | EL817-B broche 2 (cathode) | direct | GND | Noir |
-| 9 | EL817-B broche 3 (emetteur) | direct | GND | Noir |
-| 10 | Splitter PIN4 (GND) | direct | ESP GND | Noir |
-| 11 | Splitter PIN5 (Display data) | 2kR | ESP D2/GPIO4 | Bleu |
-| 12 | Splitter PIN6 (Clock) | 1kR | ESP D1/GPIO5 | Vert |
-| 13 | Splitter PIN7 (5V) | direct | ESP VIN | Rouge |
-
-### Points de vigilance
-
-- **PIN1 et PIN2 du splitter : ne jamais connecter.**
-- Le collecteur EL817 est alimente en 5V (PIN7 RJ), PAS en 3.3V ESP.
-  (meme choix que MagnusPer — le bus fonctionne en logique 5V)
-- PIN3 du splitter doit etre coupee et recablee via les 2 EL817 pour isoler
-  correctement VL403 et ESP.
-- PIN5 (Display data, 5V) passe par un diviseur 2kR avant l'ESP (3.3V max).
-- PIN6 (Clock, 5V) passe par une resistance 1kR avant l'ESP.
+Pour les combinaisons (Mode, Cycles), deux optocoupleurs sont activés simultanément.
 
 ---
 
-## 3. Plan d'integration progressif
+## 2. Architecture d'intégration ESP8266 + optocoupleurs
 
-### Etape 1 — Reception VL403 d'occasion
+### Principe
 
-Brancher le VL403 d'occasion sur J1 via le splitter RJ45 (femelle A).
-Verifier que le panneau principal (VL403 original, si disponible) continue de
-fonctionner normalemen. Si le VL403 original est hors service, utiliser
-uniquement le VL403 d'occasion.
+Un optocoupleur par fonction. Le collecteur/émetteur court-circuite le fil commun
+avec le fil de la fonction. L'ESP commande le côté LED de l'optocoupleur.
 
-### Etape 2 — Lecture J1 (sans EL817)
+```
+ESP8266                    Optocoupleur              RJ45 → J1
+───────                    ────────────              ─────────
+GPIO → [220Ω] → Anode ─┐
+                        ├─ LED ─┤
+                GND ────┘       │
+                                │
+                    Collecteur ─┤──── Pin fonction (1/2/6/7)
+                    Émetteur   ─┤──── Pin 8 (Marron, COMMUN)
+```
 
-Monter l'ESP8266 en lecture seule :
-- PIN4 (GND) -> ESP GND
-- PIN5 (Display data) -> [2kR] -> ESP D2/GPIO4
-- PIN6 (Clock) -> [1kR] -> ESP D1/GPIO5
-- PIN7 (5V) -> ESP VIN
+### Câblage complet (4 fonctions)
 
-Objectif : verifier que les donnees display remontent et que les appuis VL403
-physiques sont visibles dans le moniteur serie. Valider les timings par rapport
-a la reference MagnusPer (VL700S).
+| # | De | Via | À |
+|---|-----|-----|---|
+| 1 | ESP GPIO_TEMP | 220Ω | Opto-A anode |
+| 2 | Opto-A cathode | direct | GND |
+| 3 | Opto-A collecteur | direct | RJ45 pin 1 (Gris, TEMP) |
+| 4 | Opto-A émetteur | direct | RJ45 pin 8 (Marron, COMMUN) |
+| 5 | ESP GPIO_BLOWER | 220Ω | Opto-B anode |
+| 6 | Opto-B cathode | direct | GND |
+| 7 | Opto-B collecteur | direct | RJ45 pin 2 (Orange, BLOWER) |
+| 8 | Opto-B émetteur | direct | RJ45 pin 8 (Marron, COMMUN) |
+| 9 | ESP GPIO_PUMP | 220Ω | Opto-C anode |
+| 10 | Opto-C cathode | direct | GND |
+| 11 | Opto-C collecteur | direct | RJ45 pin 6 (Jaune, POMPE) |
+| 12 | Opto-C émetteur | direct | RJ45 pin 8 (Marron, COMMUN) |
+| 13 | ESP GPIO_LIGHT | 220Ω | Opto-D anode |
+| 14 | Opto-D cathode | direct | GND |
+| 15 | Opto-D collecteur | direct | RJ45 pin 7 (Bleu, LUMIÈRE) |
+| 16 | Opto-D émetteur | direct | RJ45 pin 8 (Marron, COMMUN) |
+| 17 | RJ45 pin 8 (Marron) | direct | Émetteurs tous optos (commun) |
 
-### Etape 3 — Commande J1 avec EL817
+**Composants recommandés :**
+- TLP281-4 (quad optocoupleur, 4 canaux en 1 boîtier DIP-16) — solution compacte
+- Ou 4× EL817 individuels (disponibles, déjà en stock)
+- Résistances 220Ω (déjà en stock)
 
-Ajouter les 2 EL817 selon le schema section 2.
-Tester l'injection d'un appui virtuel Temp.
+### Combinaisons par activation simultanée
 
-### Etape 4 — Integration Home Assistant
+Pour simuler Mode (TEMP + LUMIÈRE) :
+→ Activer GPIO_TEMP ET GPIO_LIGHT en même temps (< 100ms de décalage).
 
-Si la commande J1 fonctionne :
-- RS-485 (J18/EW11A) : lecture temperature, mode, heater, pompe
-- Bus J1 (ESP8266 + EL817) : commandes Temp et mode
-- Finaliser l'entite `climate` HA avec controle bidirectionnel
+Pour simuler Cycles filtration (TEMP + POMPE) :
+→ Activer GPIO_TEMP ET GPIO_PUMP en même temps.
 
-### Plan B — Si bus J1 ne fonctionne pas avec VL403
+### Connexion au J1 via splitter RJ45
 
-Garder le monitoring RS-485 + IR pour Light/Blower/Pump1.
-La consigne reste modifiable manuellement via le VL403 physique
-(cas acceptable, la consigne est rarement modifiee).
+```
+J1 carte GS501Z+ ─── splitter RJ45 (mâle → 2 femelles)
+                           │
+                           ├── Femelle A → VL403 d'occasion (panneau physique)
+                           │
+                           └── Femelle B → Câble vers optocoupleurs + ESP8266
+```
+
+Le VL403 et l'ESP sont en parallèle sur le même bus J1. Les optocoupleurs
+n'interfèrent pas avec le VL403 quand ils ne sont pas activés (circuit ouvert).
 
 ---
 
-## 4. References
+## 3. Plan d'intégration progressif
 
-- [MagnusPer/Balboa-GS510SZ](https://github.com/MagnusPer/Balboa-GS510SZ) :
-  reference implementation bus J1 (VL700S, architecture similaire)
-- `APPROACHES_TESTED.md` section 3 : details incompatibilites VL700S/VL403
-- `HARDWARE.md` : materiel disponible (EL817, resistances, splitter, ESP8266)
+### Étape 1 — Réception VL403 d'occasion
+
+Brancher le VL403 d'occasion sur J1 via le splitter (femelle A).
+Vérifier que le spa répond normalement aux appuis physiques.
+
+### Étape 2 — Test lecture passive
+
+Avant de câbler les optocoupleurs, connecter l'ESP en lecture seule :
+- RJ45 pin 8 (Marron) → ESP GND
+- RJ45 pin 1 (Gris) → ESP GPIO (lecture, avec résistance pull-up)
+
+Vérifier dans le moniteur série que les appuis VL403 physiques sont
+détectables (changement d'état sur le fil TEMP).
+
+### Étape 3 — Câblage complet optocoupleurs
+
+Monter les 4 optocoupleurs selon le tableau de câblage section 2.
+Tester chaque fonction individuellement depuis l'ESP.
+
+### Étape 4 — Intégration Home Assistant
+
+Finaliser l'entité `climate` HA :
+- Lecture : RS-485 via EW11A/J18 (température, mode, heater)
+- Écriture : ESP + optocoupleurs via J1 (consigne Temp, changement Mode)
+
+---
+
+## 4. Durée des impulsions (à calibrer)
+
+Les durées d'impulsion pour un appui VL403 reconnu sont à déterminer
+expérimentalement. Point de départ :
+
+| Type d'action | Durée impulsion estimée |
+|---------------|-------------------------|
+| Appui court (toggle) | 100–300 ms |
+| Maintien Temp (incrément) | 500 ms par degré |
+| Combinaison (Mode/Cycle) | 100–300 ms, simultané |
+
+Ces valeurs seront affinées lors des tests avec le VL403 d'occasion.
+
+---
+
+## 5. Ce qui a été abandonné
+
+L'architecture porte OR sur PIN3 (plan initial inspiré de MagnusPer/VL700S)
+a été abandonnée car le VL403 n'utilise pas de bus série multiplexé.
+Voir `APPROACHES_TESTED.md` section 3.6 pour les détails.
+
+---
+
+## 6. Références
+
+- `APPROACHES_TESTED.md` section 3.7 : découverte du fonctionnement VL403
+- `HARDWARE.md` : matériel disponible (EL817, résistances, splitter, ESP8266)
 - `PROTOCOL.md` : protocole RS-485 J18 (lecture)
+- `IR_CODES.md` : codes IR pour Light/Blower/Pump (alternative IR)
