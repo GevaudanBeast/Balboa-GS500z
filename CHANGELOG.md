@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `lovelace/spa-dashboard.yaml` : dashboard Lovelace cible — grille 3×2
+  (thermostat, blower, lumiere, pompe, mode, cycles) + carte details
+  (temperature sortie rechauffeur, heater, saisie temp en cours).
+  Les entites referancees incluent des entites cibles firmware v1.6+
+  non encore implementees (voir `lovelace/README.md`).
+- `lovelace/README.md` (FR + EN) : statut d'implementation de chaque
+  entite Lovelace, liste des entites ESPHome v1.5.3 disponibles, roadmap
+  v1.6+, helpers HA a creer.
 - `esphome-tools/balboa-spa-control/balboa-spa-control-v1.5.3.yaml` :
   firmware ESPHome valide pour ESP8266 NodeMCU pilotant la lecture
   RS-485 (TTL485 sur J18) + simulation des boutons VL403 (TLP281-4 sur J1).
@@ -29,6 +37,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   crash/WDT (reboots toutes les 20-155 min).
 
 ### Changed
+- `README.md` : mise a jour statut projet (mai 2026), prerequis hardware
+  (TTL485 + TLP281-4), section controle operationnel, entites ESPHome,
+  limitations connues, table documentation — contenu FR + EN.
+- `INSTALL.md` : ajout section firmware ESPHome (secrets, flash, decouverte
+  HA) + section dashboard Lovelace (installation, helpers a creer) —
+  contenu FR + EN. Mise a jour prerequis hardware.
 - `HARDWARE.md` / `BUS_J1_PROTOCOL.md` : **alignement du pinout RJ45 VL403
   sur la convention du briefing** (loquet bas, lecture gauche→droite,
   face contacts visibles) :

@@ -1,26 +1,39 @@
-# Guide d'Installation Détaillé - Balboa GS500Z
+# Guide d'Installation — Balboa GS500Z
+# Installation Guide — Balboa GS500Z
 
-Ce guide vous accompagne pas à pas dans l'installation et la configuration de l'intégration Balboa GS500Z pour Home Assistant.
+> **FR** : Ce guide vous accompagne pas à pas dans l'installation et la
+> configuration complète : matériel, firmware ESPHome, intégration HA et
+> dashboard Lovelace.
+>
+> **EN**: This guide walks you through the complete installation and
+> configuration: hardware, ESPHome firmware, HA integration and Lovelace
+> dashboard.
 
-## 📋 Table des matières
+## FR — Table des matières / EN — Table of contents
 
-1. [Prérequis](#prérequis)
-2. [Installation du matériel](#installation-du-matériel)
-3. [Configuration de l'EW11A](#configuration-de-lew11a)
-4. [Installation de l'intégration](#installation-de-lintégration)
-5. [Configuration dans Home Assistant](#configuration-dans-home-assistant)
-6. [Vérification](#vérification)
-7. [Dépannage](#dépannage)
+1. [Prérequis / Prerequisites](#prérequis--prerequisites)
+2. [Installation du matériel / Hardware installation](#installation-du-matériel--hardware-installation)
+3. [Firmware ESPHome](#firmware-esphome)
+4. [Configuration de l'EW11A / EW11A configuration](#configuration-de-lew11a--ew11a-configuration) *(optionnel si TTL485 seul / optional if TTL485 only)*
+5. [Installation de l'intégration HA / HA integration installation](#installation-de-lintégration--ha-integration-installation)
+6. [Dashboard Lovelace](#dashboard-lovelace)
+7. [Vérification / Verification](#vérification--verification)
+8. [Dépannage / Troubleshooting](#dépannage--troubleshooting)
 
-## 🔧 Prérequis
+## 🔧 Prérequis / Prerequisites
 
-### Matériel requis
+### FR — Matériel requis / EN — Required hardware
 
-- ✅ Spa Balboa avec carte de contrôle **GS500Z**
-- ✅ Clavier Balboa **VL403**
-- ✅ Module RS-485 vers WiFi **EW11A** (ou compatible)
-- ✅ Câbles RS-485 (A, B, GND)
-- ✅ Home Assistant fonctionnel (version 2023.1 ou supérieure)
+- ✅ Spa Balboa avec carte de contrôle **GS500Z** / Balboa spa with **GS500Z** controller board
+- ✅ Clavier Balboa **VL403** / Balboa **VL403** keypad
+- ✅ Module **TTL485 (MAX485)** sur J18 pour la lecture RS-485 / **TTL485 (MAX485)** module on J18 for RS-485 reading
+- ✅ **ESP8266 NodeMCU v2** + **optocoupleurs TLP281-4** sur J1 pour le contrôle / **ESP8266 NodeMCU v2** + **TLP281-4 optocouplers** on J1 for control
+- ✅ Home Assistant (version 2023.1 ou supérieure / or higher)
+
+> Le module **EW11A** reste utilisable comme passerelle RS-485→WiFi à la place
+> du TTL485 — la configuration reste identique côté HA. /
+> The **EW11A** module can still be used as an RS-485→WiFi bridge instead of
+> the TTL485 — the HA configuration remains identical.
 
 ### Connaissances requises
 
@@ -87,6 +100,70 @@ Ce guide vous accompagne pas à pas dans l'installation et la configuration de l
 - ✅ Aucun fil dénudé ne touche le châssis
 - ✅ Les polarités A/B sont respectées
 - ✅ L'EW11A s'allume (LED allumée)
+
+## ⚡ Firmware ESPHome
+
+> **FR** : Cette section décrit l'installation du firmware ESPHome sur
+> l'ESP8266 NodeMCU qui pilote les optocoupleurs J1.
+>
+> **EN**: This section describes installing the ESPHome firmware on the
+> ESP8266 NodeMCU that drives the J1 optocouplers.
+
+### FR — Prérequis ESPHome / EN — ESPHome prerequisites
+
+```bash
+pip install esphome
+```
+
+### FR — Étape 1 : Créer le fichier secrets
+
+**FR** : Copier le template et renseigner vos valeurs :
+
+**EN**: Copy the template and fill in your values:
+
+```bash
+cd esphome-tools/balboa-spa-control
+cp secrets.yaml.example secrets.yaml
+# Editer secrets.yaml avec votre SSID, mot de passe WiFi, cle API, mot de passe OTA
+# Edit secrets.yaml with your SSID, WiFi password, API key, OTA password
+```
+
+Générer une clé API / Generate an API key:
+
+```bash
+openssl rand -base64 32
+```
+
+### FR — Étape 2 : Flasher l'ESP / EN — Step 2: Flash the ESP
+
+**FR** : Connecter l'ESP8266 NodeMCU en USB, puis :
+
+**EN**: Connect the ESP8266 NodeMCU via USB, then:
+
+```bash
+esphome run esphome-tools/balboa-spa-control/balboa-spa-control-v1.5.3.yaml
+```
+
+**FR** : Les mises à jour suivantes peuvent se faire en OTA (sans fil).
+
+**EN**: Subsequent updates can be done OTA (wirelessly).
+
+### FR — Étape 3 : Vérifier dans HA / EN — Step 3: Check in HA
+
+**FR** : L'ESP apparaît automatiquement dans HA → Paramètres → Appareils
+et services → ESPHome. Accepter l'intégration. Toutes les entités
+(`sensor.*`, `binary_sensor.*`, `button.*`) sont découvertes automatiquement.
+
+**EN**: The ESP appears automatically in HA → Settings → Devices and services
+→ ESPHome. Accept the integration. All entities (`sensor.*`, `binary_sensor.*`,
+`button.*`) are discovered automatically.
+
+> Voir `esphome-tools/balboa-spa-control/README.md` pour la liste complète
+> des entités et le câblage détaillé TTL485 + TLP281-4. /
+> See `esphome-tools/balboa-spa-control/README.md` for the full entity list
+> and detailed TTL485 + TLP281-4 wiring.
+
+---
 
 ## 📡 Configuration de l'EW11A
 
@@ -301,9 +378,44 @@ L'intégration va tester la connexion. Si tout se passe bien, vous verrez :
 
 3. **Cliquez sur "Soumettre"**
 
-## ✅ Vérification
+## 🖥️ Dashboard Lovelace
 
-### Vérifier les entités créées
+> **FR** : Le dashboard cible est disponible dans `lovelace/spa-dashboard.yaml`.
+> Certaines entités ne sont pas encore implémentées dans le firmware v1.5.3 —
+> voir `lovelace/README.md` pour le statut détaillé.
+>
+> **EN**: The target dashboard is available in `lovelace/spa-dashboard.yaml`.
+> Some entities are not yet implemented in firmware v1.5.3 —
+> see `lovelace/README.md` for the detailed status.
+
+### FR — Installation du dashboard / EN — Dashboard installation
+
+1. **FR** : Aller dans HA → Vue d'ensemble → Modifier le tableau de bord → ⋮ → Éditeur YAML.
+   **EN**: Go to HA → Overview → Edit dashboard → ⋮ → YAML editor.
+
+2. **FR** : Coller le contenu de `lovelace/spa-dashboard.yaml`.
+   **EN**: Paste the contents of `lovelace/spa-dashboard.yaml`.
+
+3. **FR** : Sauvegarder. Les entités manquantes apparaîtront avec une erreur
+   jusqu'à leur implémentation dans le firmware v1.6+.
+   **EN**: Save. Missing entities will show an error until they are implemented
+   in firmware v1.6+.
+
+### FR — Helpers HA à créer / EN — HA helpers to create
+
+**FR** : Avant d'utiliser le dashboard, créer dans HA → Paramètres → Assistants :
+
+**EN**: Before using the dashboard, create in HA → Settings → Helpers:
+
+| Helper | Type | Description FR | EN |
+|---|---|---|---|
+| `input_boolean.spa_temp_pending` | Input Boolean | Changement de consigne en cours | Setpoint change in progress |
+
+---
+
+## ✅ Vérification / Verification
+
+### FR — Vérifier les entités créées / EN — Check created entities
 
 1. **Allez dans Paramètres → Appareils et services**
 2. **Cliquez sur "Balboa GS500Z"**
