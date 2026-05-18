@@ -1,0 +1,483 @@
+# ============================================================
+# Balboa GS501Z + VL403 — ESP8266 NodeMCU
+# Version: 1.5.3
+# Date: 2026-05-11
+#
+# Correctifs vs 1.5.2 :
+#   [FIX-1] opto_light : GPIO16 (D0) -> GPIO15 (D8)
+#           GPIO16 (domaine RTC) genere un transitoire HIGH au boot
+#           qui declenchait le bouton Light a chaque redemarrage.
+#           GPIO15 (D8) demarre hardware LOW via pull-down NodeMCU.
+#
+#   [FIX-2] Globales last_raw_frame et diag_code : std::string -> char[]
+#           Les std::string fragmentaient le heap (~45 KB) a chaque
+#           trame (10-12/s) -> crash/WDT (reboots toutes 20-155 min).
+#           Les char[] statiques n'utilisent pas le heap.
+#
+# Optimisations heritees de v1.5.2 :
+#   - Logger niveau INFO (plus DEBUG)
+#   - Buffers parse trame : char[512] + uint8_t[27] statiques (pas de heap)
+#   - web_server supprime (~15-20 KB RAM liberes)
+#   - Template sensors : update_interval 10s (etait 5s)
+#   - Sensor trame brute : update_interval 120s
+#   - Detection perte signal : seuil 20 x 10s = 200s
+#   - J1 counter supprime (balboa_j1_counter.h non inclus)
+#
+# CABLAGE TTL485 (RS485 lecture via J18):
+#   VCC -> ESP 3.3V  |  GND -> ESP GND
+#   TXD -> D2 (GPIO4)  [attention : TXD du module, pas RXD]
+#   D+/A -> J18 borne A  |  D-/B -> J18 borne B
+#
+# CABLAGE TLP281-4 (simulation boutons VL403 via J1):
+#   IN1 -> D5 (GPIO14) = BLOWER  -> OUT1 -> pin7 RJ45 (Orange)
+#   IN2 -> D6 (GPIO12) = POMPE   -> OUT2 -> pin3 RJ45 (Jaune)
+#   IN3 -> D7 (GPIO13) = TEMP    -> OUT3 -> pin8 RJ45 (Gris)
+#   IN4 -> D8 (GPIO15) = LIGHT   -> OUT4 -> pin2 RJ45 (Bleu)
+#          [FIX-1: etait D0/GPIO16]
+#   GND entree -> GND ESP
+#   HVCC -> pin1 RJ45 (Marron, Commun +5V VL403)
+#   HGND -> GND cote VL403 (ou laisser flottant si anode-commun)
+#   Cavaliers rouges isolation : RETIRER
+#
+# PINOUT VL403 RJ45 (face connecteur, loquet bas, G->D):
+#   pin1=Marron(Commun+5V) pin2=Bleu(Light) pin3=Jaune(Pump)
+#   pin4=Vert(GND?) pin5=Rouge(Data?) pin6=Noir(Clock?)
+#   pin7=Orange(Blower) pin8=Gris(Temp)
+# ============================================================
+
+substitutions:
+  btn_press_ms: "100ms"
+  btn_combo_gap_ms: "400ms"
+
+esphome:
+  name: balboa-spa-control
+  friendly_name: Balboa Spa Control
+  on_boot:
+    priority: -100
+    then:
+      - logger.log: "=== Balboa Spa Control v1.5.3 demarre ==="
+
+esp8266:
+  board: nodemcuv2
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  power_save_mode: none
+  fast_connect: false
+  min_auth_mode: WPA2
+  ap:
+    ssid: "Balboa-Fallback"
+    password: !secret ap_password
+
+captive_portal:
+
+logger:
+  # INFO reduit drastiquement le volume de strings generees par ESPHome.
+  # Les ESP_LOGI/LOGW restes dans le code C++ sont toujours visibles.
+  level: INFO
+  baud_rate: 0
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+# ============================================================
+# UART — lecture TTL485 (RS485 ascii hex via J18)
+# rx seulement — le TTL485 envoie la data RS485 sur sa broche TXD
+# Format EW11A-like : [HEX54CHARS] soit 27 octets encadres par [ ]
+# ============================================================
+uart:
+  id: spa_uart
+  rx_pin: GPIO4    # D2 — broche TXD du module TTL485
+  baud_rate: 9600
+  rx_buffer_size: 512
+
+# ============================================================
+# GLOBALS
+# [FIX-2] last_raw_frame et diag_code passes de std::string a char[]
+# Tous les autres restent float/bool/int (pas de heap)
+# ============================================================
+globals:
+  - id: water_temp_raw
+    type: float
+    restore_value: false
+    initial_value: '0.0'
+
+  - id: setpoint_raw
+    type: float
+    restore_value: false
+    initial_value: '0.0'
+
+  - id: heater_state
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+
+  - id: light_state
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+
+  - id: mode_sl
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+
+  - id: mode_st
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+
+  - id: no_frame_count
+    type: int
+    restore_value: false
+    initial_value: '0'
+
+  # [FIX-2] char[55] au lieu de std::string — pas d'allocation heap
+  - id: last_raw_frame
+    type: char[55]
+    restore_value: false
+    initial_value: '""'
+
+  # [FIX-2] char[8] au lieu de std::string — pas d'allocation heap
+  - id: diag_code
+    type: char[8]
+    restore_value: false
+    initial_value: '""'
+
+# ============================================================
+# COMPOSANT UART CUSTOM
+# Lecture en boucle, parsing ASCII HEX, buffers 100% statiques
+# Pas de std::string, pas de std::vector — zero heap pendant le parsing
+# ============================================================
+custom_component:
+  - lambda: |-
+      class BalboaRS485Parser : public Component, public UARTDevice {
+       public:
+        BalboaRS485Parser(UARTComponent *parent) : UARTDevice(parent) {}
+
+        void setup() override {
+          // Rien a initialiser — tout est statique
+        }
+
+        void loop() override {
+          static char     buf[512];      // buffer accumulation ASCII hex
+          static uint16_t pos    = 0;
+          static bool     active = false;
+
+          while (available()) {
+            char c = (char)read();
+
+            if (c == '[') {
+              pos    = 0;
+              active = true;
+              continue;
+            }
+
+            if (!active) continue;
+
+            if (c == ']') {
+              active = false;
+
+              // Doit etre exactement 54 chars hex (27 octets)
+              if (pos != 54) { pos = 0; continue; }
+              buf[pos] = '\0';
+
+              // Conversion hex ASCII -> octets (statique, zero heap)
+              static uint8_t raw[27];
+              bool ok = true;
+              for (int i = 0; i < 27 && ok; i++) {
+                int hi = hexval(buf[i*2]);
+                int lo = hexval(buf[i*2+1]);
+                if (hi < 0 || lo < 0) { ok = false; }
+                else raw[i] = (uint8_t)((hi << 4) | lo);
+              }
+
+              if (!ok) { pos = 0; continue; }
+
+              // Verifier header Balboa : 64 3F 2B
+              if (raw[0] != 0x64 || raw[1] != 0x3F || raw[2] != 0x2B) {
+                pos = 0; continue;
+              }
+
+              // --- Decodage ---
+              // Temperatures (octets 0-indexes)
+              float water = raw[3] * 0.5f;
+              float setp  = raw[5] * 0.5f;
+
+              // raw[6] = compteur incrementiel — IGNORER
+
+              uint8_t b18 = raw[18];
+              uint8_t b19 = raw[19];
+              uint8_t b20 = raw[20];
+              uint8_t b23 = raw[23];
+
+              // Chauffage : b19 bit 0
+              bool heater = (b19 & 0x01) != 0;
+
+              // Lumiere : b18 bits 1-2 OU b20 == 0x02
+              bool light = ((b18 & 0x06) != 0) || (b20 == 0x02);
+
+              // Mode :
+              //   SL  = b18 == 0x08
+              //   ST  = b23 & 0x20  ET  b18 != 0x08
+              //   ECO = sinon
+              bool is_sl = (b18 == 0x08);
+              bool is_st = (!is_sl) && ((b23 & 0x20) != 0);
+
+              // Codes diagnostic
+              const char *diag = "";
+              if      (b18 & 0x40) diag = "HH";     // surchauffe haute
+              else if (b18 & 0x80) diag = "OH";     // overheat
+              else if (b19 & 0x04) diag = "IC";     // priming / initialisation
+
+              // Mise a jour globals
+              id(water_temp_raw) = water;
+              id(setpoint_raw)   = setp;
+              id(heater_state)   = heater;
+              id(light_state)    = light;
+              id(mode_sl)        = is_sl;
+              id(mode_st)        = is_st;
+              id(no_frame_count) = 0;
+
+              // [FIX-2] strcpy dans char[] — zero heap
+              strncpy(id(last_raw_frame), buf, 54);
+              id(last_raw_frame)[54] = '\0';
+
+              if (diag[0] != '\0') {
+                strncpy(id(diag_code), diag, 7);
+                id(diag_code)[7] = '\0';
+              } else if (id(diag_code)[0] != '\0') {
+                // Effacer le diag precedent si tout est OK
+                id(diag_code)[0] = '\0';
+              }
+
+              const char *mode_name = is_sl ? "SL" : (is_st ? "ST" : "ECO");
+              ESP_LOGI("balboa",
+                "Eau=%d Cons=%d Mode=%s Heat=%d Light=%d "
+                "b18=0x%02X b19=0x%02X b23=0x%02X",
+                (int)roundf(water), (int)roundf(setp),
+                mode_name, (int)heater, (int)light,
+                b18, b19, b23);
+
+              pos = 0;
+              continue;
+            }
+
+            // Accumuler — protection overflow
+            if (pos < 511)
+              buf[pos++] = c;
+            else
+              pos = 0;
+          }
+        }
+
+       private:
+        static int hexval(char c) {
+          if (c >= '0' && c <= '9') return c - '0';
+          if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+          if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+          return -1;
+        }
+      };
+
+      static BalboaRS485Parser parser(id(spa_uart));
+      return {&parser};
+
+# ============================================================
+# OUTPUTS — Optocoupleurs TLP281-4 (simulation boutons VL403)
+# ============================================================
+output:
+  - platform: gpio
+    id: opto_blower
+    pin: GPIO14    # D5 — IN1
+
+  - platform: gpio
+    id: opto_pump
+    pin: GPIO12    # D6 — IN2
+
+  - platform: gpio
+    id: opto_temp
+    pin: GPIO13    # D7 — IN3
+
+  - platform: gpio
+    id: opto_light
+    pin: GPIO15    # D8 — IN4  [FIX-1: etait GPIO16/D0]
+
+# ============================================================
+# SENSORS — Temperatures
+# update_interval 10s (optimisation v1.5.2)
+# ============================================================
+sensor:
+  - platform: template
+    name: "01 Spa Eau Temp"
+    id: sensor_water_temp
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 0
+    update_interval: 10s
+    lambda: |-
+      return roundf(id(water_temp_raw));
+
+  - platform: template
+    name: "02 Spa Consigne"
+    id: sensor_setpoint
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    accuracy_decimals: 0
+    update_interval: 10s
+    lambda: |-
+      return roundf(id(setpoint_raw));
+
+  - platform: wifi_signal
+    name: "91 Spa WiFi Signal"
+    update_interval: 60s
+
+  - platform: uptime
+    name: "92 Spa Uptime"
+    update_interval: 60s
+
+# ============================================================
+# BINARY SENSORS — Etats equipements
+# ============================================================
+binary_sensor:
+  - platform: template
+    name: "04a Spa Chauffage"
+    id: sensor_heater
+    device_class: heat
+    lambda: |-
+      return id(heater_state);
+
+  - platform: template
+    name: "04b Spa Lumiere"
+    id: sensor_light
+    device_class: light
+    lambda: |-
+      return id(light_state);
+
+  - platform: status
+    name: "98 Spa En Ligne"
+
+# ============================================================
+# TEXT SENSORS — Mode et diagnostics
+# [FIX-2] lecture char[] -> std::string uniquement au moment
+#         de la publication (10s ou 120s), pas a chaque trame
+# ============================================================
+text_sensor:
+  - platform: template
+    name: "03 Spa Mode"
+    id: sensor_mode
+    update_interval: 10s
+    lambda: |-
+      if (id(mode_sl)) return std::string("SL");
+      if (id(mode_st)) return std::string("ST");
+      return std::string("ECO");
+
+  - platform: template
+    name: "05 Spa Diag"
+    id: sensor_diag
+    update_interval: 10s
+    lambda: |-
+      if (id(diag_code)[0] != '\0') return std::string(id(diag_code));
+      return std::string("OK");
+
+  - platform: template
+    name: "09 Spa Trame Brute"
+    id: sensor_raw_frame
+    update_interval: 120s
+    lambda: |-
+      return std::string(id(last_raw_frame));
+
+  - platform: wifi_info
+    ip_address:
+      name: "93 Spa IP"
+
+# ============================================================
+# BOUTONS — Simulation boutons VL403 via optocoupleurs
+# Duree pression : btn_press_ms (100ms par defaut)
+# ============================================================
+button:
+  # --- Boutons simples ---
+  - platform: template
+    name: "03a Spa Btn Lumiere"
+    on_press:
+      - output.turn_on: opto_light
+      - delay: ${btn_press_ms}
+      - output.turn_off: opto_light
+
+  - platform: template
+    name: "03b Spa Btn Pompe"
+    on_press:
+      - output.turn_on: opto_pump
+      - delay: ${btn_press_ms}
+      - output.turn_off: opto_pump
+
+  - platform: template
+    name: "03c Spa Btn Blower"
+    on_press:
+      - output.turn_on: opto_blower
+      - delay: ${btn_press_ms}
+      - output.turn_off: opto_blower
+
+  - platform: template
+    name: "03d Spa Btn Temp"
+    on_press:
+      - output.turn_on: opto_temp
+      - delay: ${btn_press_ms}
+      - output.turn_off: opto_temp
+
+  # --- Boutons combinaisons VL403 ---
+  # Mode = Temp + Light simultanes -> cycle ST->ECO->SL->ST
+  - platform: template
+    name: "03e Spa Btn Mode"
+    on_press:
+      - output.turn_on: opto_temp
+      - output.turn_on: opto_light
+      - delay: ${btn_press_ms}
+      - output.turn_off: opto_temp
+      - output.turn_off: opto_light
+
+  # Cycles = Temp + Pump simultanes -> change la duree de filtration
+  - platform: template
+    name: "03f Spa Btn Cycles"
+    on_press:
+      - output.turn_on: opto_temp
+      - output.turn_on: opto_pump
+      - delay: ${btn_press_ms}
+      - output.turn_off: opto_temp
+      - output.turn_off: opto_pump
+
+  # Dump trame courante dans les logs ESPHome
+  - platform: template
+    name: "06 Spa Dump Trame"
+    on_press:
+      - logger.log:
+          format: "DUMP TRAME: [%s]"
+          # [FIX-2] char[] direct — pas besoin de .c_str()
+          args: ['id(last_raw_frame)']
+
+  - platform: restart
+    name: "97 Spa Redemarrer ESP"
+
+# ============================================================
+# INTERVAL — Detection perte de signal RS485
+# +1 toutes les 10s. Remis a 0 a chaque trame valide.
+# Alerte si > 20 (= pas de trame depuis 200s)
+# ============================================================
+interval:
+  - interval: 10s
+    then:
+      - lambda: |-
+          id(no_frame_count)++;
+          if (id(no_frame_count) == 20) {
+            ESP_LOGW("balboa", "COMM: aucune trame depuis ~200s");
+            strncpy(id(diag_code), "COMM", 7);
+            id(diag_code)[7] = '\0';
+          }

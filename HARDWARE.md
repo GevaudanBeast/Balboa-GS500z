@@ -104,7 +104,26 @@ court-circuit entre le fil commun (Marron, pin 1) et le fil de la fonction.
 
 ---
 
-## 5. Plan de câblage ESP8266 + optocoupleurs (à réaliser)
+## 5. Plan de câblage ESP8266 + optocoupleurs
+
+> Firmware ESPHome valide : `esphome-tools/balboa-spa-control/balboa-spa-control-v1.5.3.yaml`.
+> Voir le README associé pour le câblage TTL485 + TLP281-4 détaillé et la liste des entités exposées.
+
+### Affectation GPIO (firmware v1.5.3)
+
+| Fonction | GPIO ESP | Carte NodeMCU | Pin RJ45 VL403 |
+|---|---|---|---|
+| BLOWER | GPIO14 | D5 | pin 7 (Orange) |
+| POMPE  | GPIO12 | D6 | pin 3 (Jaune) |
+| TEMP   | GPIO13 | D7 | pin 8 (Gris) |
+| LIGHT  | **GPIO15** | **D8** | pin 2 (Bleu) |
+| RS-485 RX (TTL485 TXD) | GPIO4 | D2 | — (cote J18) |
+
+> ⚠️ **Ne pas utiliser GPIO16 (D0)** pour les sorties optocoupleur :
+> domaine RTC, transitoire HIGH au boot → déclenche le bouton à chaque
+> redémarrage (cf. FIX-1 v1.5.3).
+
+
 
 **Architecture prévue :**
 

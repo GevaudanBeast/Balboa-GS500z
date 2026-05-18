@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `esphome-tools/balboa-spa-control/balboa-spa-control-v1.5.3.yaml` :
+  firmware ESPHome valide pour ESP8266 NodeMCU pilotant la lecture
+  RS-485 (TTL485 sur J18) + simulation des boutons VL403 (TLP281-4 sur J1).
+- `esphome-tools/balboa-spa-control/README.md` : documentation cablage,
+  pinout, entites HA exposees, historique des versions.
+- `esphome-tools/balboa-spa-control/secrets.yaml.example` : template de
+  secrets (wifi, AP fallback, cle API, OTA).
+- `.gitignore` : exclusion `esphome-tools/*/secrets.yaml`, `.esphome/`,
+  `build/`.
+
+### Fixed (firmware v1.5.3 vs v1.5.2)
+- **[FIX-1]** `opto_light` deplace de GPIO16 (D0) vers GPIO15 (D8) —
+  GPIO16 (domaine RTC) genere un transitoire HIGH au boot qui declenchait
+  le bouton Light a chaque redemarrage de l'ESP. GPIO15 demarre LOW grace
+  au pull-down hardware du NodeMCU.
+- **[FIX-2]** Globales `last_raw_frame` et `diag_code` passees de
+  `std::string` a `char[]` statique — les `std::string` fragmentaient
+  le heap (~45 KB) a chaque trame (10-12 trames/s), provoquant des
+  crash/WDT (reboots toutes les 20-155 min).
+
 ### Changed
 - `HARDWARE.md` / `BUS_J1_PROTOCOL.md` : **alignement du pinout RJ45 VL403
   sur la convention du briefing** (loquet bas, lecture gauche→droite,

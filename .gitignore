@@ -44,3 +44,8 @@ home-assistant_v2.db
 .storage/
 deps/
 tts/
+
+# ESPHome
+esphome-tools/*/secrets.yaml
+esphome-tools/*/.esphome/
+esphome-tools/*/build/
