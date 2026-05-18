@@ -1,8 +1,9 @@
 """TCP client for Balboa GS500Z RS-485 communication via EW11A."""
+from __future__ import annotations
+
 import asyncio
 import logging
-from typing import Callable, Optional
-from collections.abc import Awaitable
+from collections.abc import Awaitable, Callable
 
 from .const import (
     FRAME_HEADER,
@@ -26,18 +27,18 @@ class BalboaTCPClient:
         self,
         host: str,
         port: int,
-        callback: Optional[Callable[[dict], Awaitable[None]]] = None,
+        callback: Callable[[dict], Awaitable[None]] | None = None,
     ) -> None:
         """Initialize the TCP client."""
         self.host = host
         self.port = port
         self.callback = callback
-        self._reader: Optional[asyncio.StreamReader] = None
-        self._writer: Optional[asyncio.StreamWriter] = None
+        self._reader: asyncio.StreamReader | None = None
+        self._writer: asyncio.StreamWriter | None = None
         self._running = False
-        self._read_task: Optional[asyncio.Task] = None
+        self._read_task: asyncio.Task | None = None
         self._buffer = bytearray()
-        self._last_frame: Optional[dict] = None
+        self._last_frame: dict | None = None
 
     async def connect(self) -> bool:
         """Connect to the EW11A."""
@@ -162,7 +163,7 @@ class BalboaTCPClient:
             # Remove processed frame from buffer
             self._buffer = self._buffer[end_bracket + 1 :]
 
-    def _find_frame_start(self) -> Optional[int]:
+    def _find_frame_start(self) -> int | None:
         """Find the start of a frame in the buffer."""
         buffer_str = self._buffer.decode("ascii", errors="ignore")
         idx = buffer_str.find("[")
@@ -177,7 +178,7 @@ class BalboaTCPClient:
             return False
         return True
 
-    def _parse_frame(self, frame: bytes) -> Optional[dict]:
+    def _parse_frame(self, frame: bytes) -> dict | None:
         """Parse a RS-485 frame from J18.
 
         Confirmed byte mapping (GS501Z+/VL403, captures 01/10/2025):
@@ -287,7 +288,7 @@ class BalboaTCPClient:
             "Awaiting J1 bus protocol validation."
         )
 
-    def build_mode_command(self, current_mode: str, target_mode: str) -> Optional[bytes]:
+    def build_mode_command(self, current_mode: str, target_mode: str) -> bytes | None:
         """Build a mode change command.
 
         NOT IMPLEMENTED — same reason as build_setpoint_command.  Mode changes
@@ -303,7 +304,7 @@ class BalboaTCPClient:
             "Awaiting J1 bus protocol validation."
         )
 
-    def get_last_frame(self) -> Optional[dict]:
+    def get_last_frame(self) -> dict | None:
         """Get the last parsed frame."""
         return self._last_frame
 

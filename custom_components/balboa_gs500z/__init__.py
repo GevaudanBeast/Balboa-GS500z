@@ -57,7 +57,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Start TCP client
     try:
         # Start client in background
-        asyncio.create_task(tcp_client.start())
+        hass.async_create_task(tcp_client.start())
 
         # Wait for first connection
         for _ in range(10):  # Wait up to 10 seconds
