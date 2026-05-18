@@ -11,37 +11,41 @@
 ### Principe : matrice de courts-circuits
 
 Chaque bouton du VL403 est un **simple court-circuit** entre :
-- Le fil **COMMUN** (Marron, pin 8) — référence commune à tous les boutons
-- Le fil de la **fonction** (pin 1, 2, 6 ou 7)
+- Le fil **COMMUN** (Marron, pin 1, +5 V) — référence commune à tous les boutons
+- Le fil de la **fonction** (pin 2, 3, 7 ou 8)
 
 Il n'y a pas de bus série multiplexé, pas de timing complexe, pas de protocole.
 Un appui = un contact électrique fermé entre deux fils.
 
 ### Pinout RJ45 VL403 (confirmé)
 
-Orientation : connecteur face à soi, ergot de verrouillage en bas.
+Orientation : connecteur **face contacts visibles**, loquet vers le bas,
+pins comptés de **gauche (pin 1)** à **droite (pin 8)**.
 
 | Pin RJ45 | Couleur fil clavier | Signal | Câble T568B |
 |----------|--------------------|---------|--------------------|
-| 1 | Gris | Bouton **TEMP** | Blanc/Orange |
-| 2 | Orange | Bouton **BLOWER** | Orange |
-| 3 | Noir | Non utilisé (boutons) | Blanc/Vert |
-| 4 | Rouge | Non utilisé (boutons) | Bleu |
-| 5 | Vert | Non utilisé (boutons) | Blanc/Bleu |
-| 6 | Jaune | Bouton **POMPE** | Vert |
-| 7 | Bleu | Bouton **LUMIÈRE** | Blanc/Marron |
-| 8 | Marron | **COMMUN** (référence) | Marron |
+| 1 | Marron | **COMMUN** (+5 V, référence) | Blanc/Orange |
+| 2 | Bleu | Bouton **LUMIÈRE** | Orange |
+| 3 | Jaune | Bouton **POMPE** | Blanc/Vert |
+| 4 | Vert | GND (probable) | Bleu |
+| 5 | Rouge | Data (probable, bus 24-bit) | Blanc/Bleu |
+| 6 | Noir | Clock (probable, bus 24-bit) | Vert |
+| 7 | Orange | Bouton **BLOWER** | Blanc/Marron |
+| 8 | Gris | Bouton **TEMP** | Marron |
+
+Les pins 4/5/6 ne participent pas à la matrice des boutons mais portent
+le bus d'affichage 24-bit (cf. `BUS_J1_PROTOCOL.md` §3 / approche kgstorm).
 
 ### Combinaisons de boutons
 
 | Action | Court-circuit requis | Pins |
 |--------|---------------------|------|
-| Blower ON/OFF | Marron + Orange | 8 + 2 |
-| Pompe LOW/HIGH | Marron + Jaune | 8 + 6 |
-| Lumière ON/OFF | Marron + Bleu | 8 + 7 |
-| Temp +/- | Marron + Gris | 8 + 1 |
-| **Mode (ST→ECO→SL)** | Marron + Gris + Bleu | 8 + 1 + 7 |
-| **Cycles filtration** | Marron + Gris + Jaune | 8 + 1 + 6 |
+| Lumière ON/OFF | Marron + Bleu | 1 + 2 |
+| Pompe LOW/HIGH | Marron + Jaune | 1 + 3 |
+| Blower ON/OFF | Marron + Orange | 1 + 7 |
+| Temp +/- | Marron + Gris | 1 + 8 |
+| **Mode (ST→ECO→SL)** | Marron + Gris + Bleu | 1 + 8 + 2 |
+| **Cycles filtration** | Marron + Gris + Jaune | 1 + 8 + 3 |
 
 Pour les combinaisons (Mode, Cycles), deux optocoupleurs sont activés simultanément.
 
@@ -61,36 +65,56 @@ GPIO → [220Ω] → Anode ─┐
                         ├─ LED ─┤
                 GND ────┘       │
                                 │
-                    Collecteur ─┤──── Pin fonction (1/2/6/7)
-                    Émetteur   ─┤──── Pin 8 (Marron, COMMUN)
+                    Collecteur ─┤──── Pin fonction (2/3/7/8)
+                    Émetteur   ─┤──── Pin 1 (Marron, COMMUN +5 V)
 ```
 
-### Câblage complet (4 fonctions)
+### Câblage complet (4 fonctions) — pinout briefing
 
 | # | De | Via | À |
 |---|-----|-----|---|
 | 1 | ESP GPIO_TEMP | 220Ω | Opto-A anode |
 | 2 | Opto-A cathode | direct | GND |
-| 3 | Opto-A collecteur | direct | RJ45 pin 1 (Gris, TEMP) |
-| 4 | Opto-A émetteur | direct | RJ45 pin 8 (Marron, COMMUN) |
+| 3 | Opto-A collecteur | direct | RJ45 **pin 8** (Gris, TEMP) |
+| 4 | Opto-A émetteur | direct | RJ45 **pin 1** (Marron, COMMUN) |
 | 5 | ESP GPIO_BLOWER | 220Ω | Opto-B anode |
 | 6 | Opto-B cathode | direct | GND |
-| 7 | Opto-B collecteur | direct | RJ45 pin 2 (Orange, BLOWER) |
-| 8 | Opto-B émetteur | direct | RJ45 pin 8 (Marron, COMMUN) |
+| 7 | Opto-B collecteur | direct | RJ45 **pin 7** (Orange, BLOWER) |
+| 8 | Opto-B émetteur | direct | RJ45 **pin 1** (Marron, COMMUN) |
 | 9 | ESP GPIO_PUMP | 220Ω | Opto-C anode |
 | 10 | Opto-C cathode | direct | GND |
-| 11 | Opto-C collecteur | direct | RJ45 pin 6 (Jaune, POMPE) |
-| 12 | Opto-C émetteur | direct | RJ45 pin 8 (Marron, COMMUN) |
+| 11 | Opto-C collecteur | direct | RJ45 **pin 3** (Jaune, POMPE) |
+| 12 | Opto-C émetteur | direct | RJ45 **pin 1** (Marron, COMMUN) |
 | 13 | ESP GPIO_LIGHT | 220Ω | Opto-D anode |
 | 14 | Opto-D cathode | direct | GND |
-| 15 | Opto-D collecteur | direct | RJ45 pin 7 (Bleu, LUMIÈRE) |
-| 16 | Opto-D émetteur | direct | RJ45 pin 8 (Marron, COMMUN) |
-| 17 | RJ45 pin 8 (Marron) | direct | Émetteurs tous optos (commun) |
+| 15 | Opto-D collecteur | direct | RJ45 **pin 2** (Bleu, LUMIÈRE) |
+| 16 | Opto-D émetteur | direct | RJ45 **pin 1** (Marron, COMMUN) |
+| 17 | RJ45 pin 1 (Marron) | direct | Émetteurs tous optos (commun) |
 
-**Composants recommandés :**
-- TLP281-4 (quad optocoupleur, 4 canaux en 1 boîtier DIP-16) — solution compacte
-- Ou 4× EL817 individuels (disponibles, déjà en stock)
-- Résistances 220Ω (déjà en stock)
+**Composants candidats :**
+- TLP281-4 (quad optocoupleur DIP-16) — solution compacte recommandée,
+  câblage direct anode/cathode + collecteur/émetteur.
+- 4× EL817 individuels (disponibles, déjà en stock) — équivalent fonctionnel.
+- **HY-M154** : module prêt-à-l'emploi à base de 4× PC817. ⚠ **À valider**
+  (cf. encart ci-dessous) avant intégration.
+- Résistances 220Ω (déjà en stock) — pour TLP281-4 / EL817 nus ; pas
+  nécessaires si on utilise un module avec résistances intégrées.
+
+> ⚠️ **HY-M154 — vérifications préalables au câblage (TODO)**
+>
+> 1. **Alimentation 5 V côté IN** : le module nécessite **VCC = 5 V** pour
+>    déclencher correctement. Un GPIO ESP en 3,3 V ne suffit pas. Sur
+>    NodeMCU, alimenter via VIN à 5 V et relier VCC HY-M154 = VIN NodeMCU,
+>    GND HY-M154 = GND NodeMCU.
+> 2. **Polarité côté sortie (à mesurer)** : certains modules PC817 du
+>    commerce sont **cathode-commun côté sortie**, alors que le bus J1
+>    VL403 est **anode-commun (+5 V)**. À vérifier au multimètre sur
+>    l'exemplaire physique. Si cathode-commun confirmé, soit inverser
+>    la logique de commande, soit remplacer par un module anode-commun
+>    (ou utiliser TLP281-4 / EL817 nus).
+>
+> Tant que le point 2 n'est pas mesuré, traiter le HY-M154 comme un
+> candidat et garder TLP281-4 ou 4× EL817 comme solution de repli sûre.
 
 ### Combinaisons par activation simultanée
 
@@ -100,18 +124,29 @@ Pour simuler Mode (TEMP + LUMIÈRE) :
 Pour simuler Cycles filtration (TEMP + POMPE) :
 → Activer GPIO_TEMP ET GPIO_PUMP en même temps.
 
-### Connexion au J1 via splitter RJ45
+### Connexion : deux options possibles
+
+**Option A — Splitter sur J1 :**
 
 ```
 J1 carte GS501Z+ ─── splitter RJ45 (mâle → 2 femelles)
                            │
-                           ├── Femelle A → VL403 d'occasion (panneau physique)
+                           ├── Femelle A → VL403 (panneau physique)
                            │
-                           └── Femelle B → Câble vers optocoupleurs + ESP8266
+                           └── Femelle B → Câble vers module opto + ESP8266
 ```
 
-Le VL403 et l'ESP sont en parallèle sur le même bus J1. Les optocoupleurs
-n'interfèrent pas avec le VL403 quand ils ne sont pas activés (circuit ouvert).
+**Option B — Bus partagé J1/J2 (recommandé, plus simple) :**
+
+```
+J1 carte GS501Z+ ── Câble RJ → Module opto (PC817 ×4) ← ESP8266
+J2 carte GS501Z+ ── Câble RJ → VL403 (panneau physique)
+```
+
+J1 et J2 partageant le même bus interne, il n'est pas nécessaire d'utiliser
+un splitter : on dédie un port à l'ESP et l'autre au panneau. Les
+optocoupleurs n'interfèrent pas avec le VL403 quand ils ne sont pas
+activés (circuit ouvert).
 
 ---
 
@@ -119,17 +154,21 @@ n'interfèrent pas avec le VL403 quand ils ne sont pas activés (circuit ouvert)
 
 ### Étape 1 — Réception VL403 d'occasion
 
-Brancher le VL403 d'occasion sur J1 via le splitter (femelle A).
+Brancher le VL403 d'occasion sur **J2** (ou sur J1 via splitter).
 Vérifier que le spa répond normalement aux appuis physiques.
 
 ### Étape 2 — Test lecture passive
 
 Avant de câbler les optocoupleurs, connecter l'ESP en lecture seule :
-- RJ45 pin 8 (Marron) → ESP GND
-- RJ45 pin 1 (Gris) → ESP GPIO (lecture, avec résistance pull-up)
+- RJ45 pin 1 (Marron, COMMUN +5 V) → diviseur 1k/2k → ESP GPIO ref
+- RJ45 pin 8 (Gris, TEMP) → diviseur 1k/2k → ESP GPIO (lecture, pull-up)
 
 Vérifier dans le moniteur série que les appuis VL403 physiques sont
-détectables (changement d'état sur le fil TEMP).
+détectables (chute sur le fil TEMP quand le bouton est pressé).
+
+> Le bus J1 est en **5 V** : impératif de placer un diviseur de tension
+> (1 kΩ + 2 kΩ → ~3,3 V) avant l'entrée GPIO d'un ESP8266/ESP32. Brancher
+> directement le +5 V sur un GPIO endommage le MCU.
 
 ### Étape 3 — Câblage complet optocoupleurs
 

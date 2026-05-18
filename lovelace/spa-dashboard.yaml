@@ -1,0 +1,100 @@
+# ============================================================
+# Dashboard Lovelace — Balboa GS501Z + VL403
+# ============================================================
+#
+# Deux sections :
+#   1. Grille principale 3 colonnes (controles spa)
+#   2. Carte détails (temperature sortie, heater, etat saisie)
+#
+# Entites requises — voir lovelace/README.md pour le statut
+# d'implementation de chacune.
+#
+# Installation :
+#   HA > Tableau de bord > Modifier > Editeur YAML > coller
+# ============================================================
+
+# --- Section 1 : Grille de controle ---
+square: true
+type: grid
+columns: 3
+cards:
+  - type: thermostat
+    entity: climate.spa_balboa
+    features:
+      - style: dropdown
+        type: climate-hvac-modes
+    show_current_as_primary: true
+
+  - type: tile
+    entity: switch.spa_blower
+    name: Blower
+    icon: mdi:fan
+    hide_state: true
+    vertical: false
+    features:
+      - type: toggle
+    features_position: bottom
+
+  - type: tile
+    entity: switch.spa_lumiere
+    name: Light
+    icon: mdi:lightbulb
+    hide_state: true
+    vertical: false
+    features_position: bottom
+    features:
+      - type: toggle
+
+  - type: tile
+    entity: sensor.balboa_spa_control_02b_spa_pompe
+    name: Jet 1
+    icon: mdi:pump
+    vertical: false
+    features_position: bottom
+    color: >-
+      {% set p = states('sensor.balboa_spa_control_02b_spa_pompe') | upper %} {%
+      if p == 'HIGH' %}red {% elif p == 'LOW' %}orange {% else %}disabled{%
+      endif %}
+    tap_action:
+      action: perform-action
+      perform_action: script.turn_on
+      target:
+        entity_id: script.spa_cycle_pompe
+
+  - type: tile
+    entity: sensor.spa_mode
+    name: Modes
+    vertical: false
+    features_position: bottom
+    tap_action:
+      action: perform-action
+      perform_action: button.press
+      target:
+        entity_id: button.balboa_spa_control_05a_spa_btn_mode
+
+  - type: tile
+    entity: sensor.balboa_spa_control_06b_spa_cycles
+    name: Cycles
+    icon: mdi:timer-sync
+    vertical: false
+    tap_action:
+      action: perform-action
+      perform_action: button.press
+      target:
+        entity_id: button.balboa_spa_control_06a_spa_btn_cycles
+    features_position: bottom
+
+---
+
+# --- Section 2 : Details et diagnostics ---
+type: entities
+entities:
+  - entity: sensor.balboa_spa_control_04d_spa_temperature_sortie_rechauffeur
+    name: Temperature apres rechauffeur
+  - entity: binary_sensor.balboa_spa_control_07a_spa_status_heater
+    name: Rechauffeur
+  - entity: input_boolean.spa_temp_pending
+    name: Changement en cours
+  - entity: binary_sensor.balboa_spa_control_08a_spa_mode_saisie_temp
+    name: Mode saisie temp
+state_color: true

@@ -1,352 +1,140 @@
-# Contributing to Balboa GS500Z Integration
+# Contributing — Balboa GS500Z / GS501Z+
 
-Thank you for your interest in contributing to the Balboa GS500Z Home Assistant integration! This document provides guidelines and information for contributors.
+> **FR** : Merci de votre intérêt pour ce projet ! Ce document décrit
+> les conventions et les flux de contribution.
+>
+> **EN**: Thanks for your interest in this project! This document
+> describes contribution conventions and workflows.
 
-## 🎯 How Can I Contribute?
+---
 
-### Reporting Bugs
+## FR — Périmètre / EN — Scope
 
-Before creating bug reports, please check existing issues to avoid duplicates. When creating a bug report, include:
+Ce projet **n'est pas un composant HACS**. Il regroupe :
 
-- **Description**: Clear description of the issue
-- **Steps to reproduce**: Detailed steps to reproduce the behavior
-- **Expected behavior**: What you expected to happen
-- **Actual behavior**: What actually happened
-- **Environment**:
-  - Home Assistant version
-  - Integration version
-  - EW11A firmware version
-  - GS500Z firmware version (if known)
-- **Logs**: Relevant logs with debug enabled
-- **Screenshots**: If applicable
+This project is **not a HACS component**. It bundles:
 
-#### Example Bug Report
+1. Un **firmware ESPHome** (`esphome-tools/balboa-spa-control/`) pour
+   ESP8266 NodeMCU. / An **ESPHome firmware** for ESP8266 NodeMCU.
+2. Un **dashboard Lovelace** (`lovelace/`). / A **Lovelace dashboard**.
+3. De la **documentation matérielle et protocoles** (MD à la racine). /
+   **Hardware and protocol documentation** (root MD files).
 
-```markdown
-**Description**
-The climate entity shows unavailable after Home Assistant restart.
+Les contributions sont les bienvenues sur ces trois axes.
 
-**Steps to Reproduce**
-1. Install integration
-2. Configure EW11A at 192.168.1.100:8899
-3. Restart Home Assistant
-4. Check climate.spa entity
+Contributions are welcome on all three axes.
 
-**Expected Behavior**
-Entity should reconnect automatically.
+---
 
-**Actual Behavior**
-Entity remains unavailable until integration is reloaded.
+## FR — Types de contributions / EN — Contribution types
 
-**Environment**
-- HA Version: 2024.1.0
-- Integration Version: 1.0.0
-- EW11A: Firmware 3.5
+### FR — Bugs / EN — Bugs
 
-**Logs**
-```
-[See attached logs]
-```
-```
+**FR** : Ouvrir une issue avec :
 
-### Suggesting Enhancements
+**EN**: Open an issue with:
 
-Enhancement suggestions are welcome! Please include:
+- Description / Description
+- Étapes de reproduction / Steps to reproduce
+- Comportement attendu vs réel / Expected vs actual behavior
+- Logs ESPHome (`esphome logs ...`) / ESPHome logs
+- Version firmware (ex. `v1.5.3`) / Firmware version
+- Modèle spa + panneau / Spa model + panel
 
-- **Use case**: Why is this enhancement needed?
-- **Proposed solution**: How should it work?
-- **Alternatives**: Other solutions you've considered
-- **Additional context**: Screenshots, examples, etc.
+### FR — Nouvelles fonctionnalités firmware / EN — New firmware features
 
-### Protocol Documentation
+**FR** : Discuter d'abord dans une issue avant d'ouvrir une PR. Le firmware
+vise à rester compact (RAM ESP8266 limitée).
 
-If you've discovered new details about the RS-485 protocol:
+**EN**: Discuss in an issue before opening a PR. The firmware aims to
+stay compact (limited ESP8266 RAM).
 
-1. **Capture raw frames**: Use an RS-485 analyzer or the integration's debug logs
-2. **Document the behavior**: What action caused these frames?
-3. **Provide examples**: Multiple frame examples are helpful
-4. **Test your findings**: Verify the behavior is consistent
+Bonnes pratiques / Best practices :
 
-Example contribution:
+- Pas de `std::string` dans le hot path (parsing trames). / No `std::string`
+  in the hot path (frame parsing).
+- Buffers statiques (`char[]`, `uint8_t[]`). / Static buffers.
+- Logger `INFO` en production (pas `DEBUG`). / `INFO` logger in production.
+- Pas de `web_server` (économie RAM). / No `web_server` (RAM saving).
 
-```markdown
-## New Discovery: Pump Control
+### FR — Documentation / EN — Documentation
 
-I've discovered that byte 12 controls the pump state.
+**FR** : Les fichiers `.md` à la racine sont **bilingues FR/EN**. Toute
+modification doit conserver les deux langues, soit côte à côte, soit
+par sections distinctes (`## FR — ... / EN — ...`).
 
-**Frame examples:**
-- Pump OFF: `[643F2B...00...]` (byte 12 = 0x00)
-- Pump ON:  `[643F2B...01...]` (byte 12 = 0x01)
+**EN**: Root `.md` files are **bilingual FR/EN**. Any modification must
+keep both languages, either side by side or in separate sections.
 
-**Test method:**
-1. Pressed pump button on VL403
-2. Observed byte 12 change from 0x00 to 0x01
-3. Confirmed with multiple tests
+---
 
-**Frames captured:**
-[Attach pcap file or hex dumps]
-```
+## FR — Conventions de commit / EN — Commit conventions
 
-## 🔧 Development Setup
+**FR** : Format `<type>: <description courte>`.
 
-### Prerequisites
+**EN**: Format `<type>: <short description>`.
 
-- Python 3.11+
-- Home Assistant development environment
-- Git
+Types : `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `chore`.
 
-### Setting Up Development Environment
-
-1. **Fork the repository**
-
-```bash
-git clone https://github.com/YOUR-USERNAME/Balboa-GS500z.git
-cd Balboa-GS500z
-```
-
-2. **Create a branch**
-
-```bash
-git checkout -b feature/your-feature-name
-# or
-git checkout -b fix/your-bug-fix
-```
-
-3. **Install in development mode**
-
-Copy to your HA custom_components:
-
-```bash
-ln -s $(pwd)/custom_components/balboa_gs500z ~/.homeassistant/custom_components/
-```
-
-4. **Enable debug logging**
-
-Add to `configuration.yaml`:
-
-```yaml
-logger:
-  default: info
-  logs:
-    custom_components.balboa_gs500z: debug
-```
-
-5. **Restart Home Assistant**
-
-```bash
-ha core restart
-```
-
-### Code Style
-
-- Follow [PEP 8](https://www.python.org/dev/peps/pep-0008/)
-- Use type hints
-- Use descriptive variable names
-- Add docstrings to functions and classes
-- Keep functions focused and small
-
-Example:
-
-```python
-def parse_temperature(raw_value: int) -> int:
-    """
-    Parse raw temperature value from RS-485 frame.
-
-    Args:
-        raw_value: Raw byte value (0-255)
-
-    Returns:
-        Temperature in Celsius (rounded to nearest integer)
-    """
-    return round(raw_value * 0.5)
-```
-
-### Testing Your Changes
-
-1. **Manual testing**:
-   - Test all affected features
-   - Test error conditions
-   - Test with different configurations
-
-2. **Check logs**:
-   - No errors should appear
-   - Debug logs should be informative
-   - No excessive logging at info level
-
-3. **Test integration reload**:
-   - Settings → Devices & Services → Balboa GS500Z → Reload
-
-4. **Test Home Assistant restart**:
-   - Verify reconnection works
-
-### Commit Messages
-
-Use clear, descriptive commit messages:
+Exemples / Examples :
 
 ```
-Add pump control support
-
-- Parse byte 12 for pump state
-- Add binary_sensor for pump
-- Update documentation with pump protocol details
+feat(esphome): ajout sensor pompe / add pump sensor
+fix(esphome): GPIO16 -> GPIO15 pour opto_light / for opto_light
+docs: pinout VL403 mis a jour / VL403 pinout updated
 ```
 
-Format:
-```
-<type>: <subject>
+---
 
-<body>
+## FR — Branches / EN — Branches
 
-<footer>
-```
+- `main` : branche stable / stable branch
+- `dev` : branche de développement / development branch
+- `feat/*`, `fix/*` : branches de feature/fix / feature/fix branches
 
-Types:
-- `feat`: New feature
-- `fix`: Bug fix
-- `docs`: Documentation only
-- `style`: Code style changes (formatting, etc.)
-- `refactor`: Code refactoring
-- `test`: Adding tests
-- `chore`: Maintenance tasks
+**FR** : Les PR ciblent `main` (ou `dev` si la fonctionnalité est expérimentale).
 
-## 📝 Pull Request Process
+**EN**: PRs target `main` (or `dev` if the feature is experimental).
 
-1. **Update documentation**:
-   - Update README.md if needed
-   - Update PROTOCOL.md for protocol changes
-   - Add examples to EXAMPLES.md if applicable
-   - Update CHANGELOG.md
+---
 
-2. **Test thoroughly**:
-   - Test all changes
-   - Verify no regressions
-   - Test on a real spa if possible
+## FR — Tests / EN — Testing
 
-3. **Create pull request**:
-   - Use a clear title
-   - Reference related issues
-   - Describe your changes
-   - Include test results
+**FR** : Avant de soumettre une PR firmware :
 
-4. **Respond to feedback**:
-   - Address review comments
-   - Update PR as needed
-   - Be patient and respectful
+**EN**: Before submitting a firmware PR:
 
-### Pull Request Template
+1. **FR** : `esphome config balboa-spa-control-v1.5.3.yaml` doit passer
+   sans erreur. / Must pass without errors.
+2. **FR** : Flasher sur un ESP8266 réel et vérifier au moins 24 h sans
+   redémarrage. / Flash on a real ESP8266 and verify at least 24 h
+   without restart.
+3. **FR** : Vérifier que la RAM libre reste > 8 KB après plusieurs heures
+   (`text_sensor` debug heap). / Check free heap stays > 8 KB after
+   several hours.
 
-```markdown
-## Description
-[Clear description of changes]
+---
 
-## Related Issue
-Fixes #[issue number]
+## FR — Hardware / EN — Hardware
 
-## Type of Change
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Breaking change
-- [ ] Documentation update
+**FR** : Toute modification de pinout (RJ45, GPIO) doit être validée par
+mesure multimètre et documentée dans `HARDWARE.md` + `BUS_J1_PROTOCOL.md`.
 
-## Testing
-- [ ] Tested manually on real hardware
-- [ ] Tested with Home Assistant restart
-- [ ] Tested integration reload
-- [ ] No errors in logs
-- [ ] Checked all affected entities
+**EN**: Any pinout change (RJ45, GPIO) must be validated with multimeter
+measurement and documented in `HARDWARE.md` + `BUS_J1_PROTOCOL.md`.
 
-## Checklist
-- [ ] Code follows project style
-- [ ] Documentation updated
-- [ ] CHANGELOG.md updated
-- [ ] All tests pass
-- [ ] No breaking changes (or documented)
+⚠️ **FR** : Ne jamais brancher directement le bus J1 5 V sur un GPIO ESP
+sans diviseur de tension (1 kΩ + 2 kΩ).
 
-## Screenshots
-[If applicable]
+⚠️ **EN**: Never connect the 5 V J1 bus directly to an ESP GPIO without
+a voltage divider (1 kΩ + 2 kΩ).
 
-## Additional Notes
-[Any additional information]
-```
+---
 
-## 🔍 Code Review
+## FR — Licence / EN — License
 
-All submissions require review. We review:
+**FR** : En contribuant, vous acceptez que votre code soit publié sous
+licence MIT (voir `LICENSE`).
 
-- **Code quality**: Clean, maintainable code
-- **Functionality**: Works as intended
-- **Documentation**: Clear and complete
-- **Testing**: Thoroughly tested
-- **Breaking changes**: Clearly documented
-
-## 🐛 Debugging Tips
-
-### Enable Debug Logs
-
-```yaml
-logger:
-  default: info
-  logs:
-    custom_components.balboa_gs500z: debug
-    custom_components.balboa_gs500z.tcp_client: debug
-    custom_components.balboa_gs500z.coordinator: debug
-```
-
-### Test TCP Connection
-
-```bash
-# Test connection to EW11A
-telnet 192.168.1.100 8899
-
-# Should see frames:
-[643F2B...]
-[643F2B...]
-```
-
-### Monitor Frames
-
-```bash
-# Watch logs in real-time
-tail -f home-assistant.log | grep balboa_gs500z
-```
-
-### Decode Frames Manually
-
-```python
-frame_hex = "643F2B4A004C..."
-frame_bytes = bytes.fromhex(frame_hex)
-
-water_temp = round(frame_bytes[3] * 0.5)
-setpoint = round(frame_bytes[5] * 0.5)
-mode = frame_bytes[23]
-heater = frame_bytes[19] & 0x01
-
-print(f"Water: {water_temp}°C, Setpoint: {setpoint}°C, Mode: 0x{mode:02X}, Heater: {heater}")
-```
-
-## 📚 Resources
-
-- [Home Assistant Developer Docs](https://developers.home-assistant.io/)
-- [Home Assistant Architecture](https://developers.home-assistant.io/docs/architecture_index)
-- [Python asyncio](https://docs.python.org/3/library/asyncio.html)
-- [RS-485 Protocol](https://en.wikipedia.org/wiki/RS-485)
-
-## 🤝 Community
-
-- Be respectful and inclusive
-- Help others when you can
-- Share your knowledge
-- Be patient with newcomers
-
-## 📜 License
-
-By contributing, you agree that your contributions will be licensed under the MIT License.
-
-## ❓ Questions?
-
-If you have questions:
-- Check existing issues and discussions
-- Ask in the issue tracker
-- Be specific and provide context
-
-Thank you for contributing! 🎉
+**EN**: By contributing, you agree your code will be published under the
+MIT license (see `LICENSE`).
