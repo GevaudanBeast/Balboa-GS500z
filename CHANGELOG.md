@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- `HARDWARE.md` : documentation des modules réellement utilisés —
+  **TTL485 (MAX485)** côté J18 pour la lecture RS-485, et
+  **HY-M154 (PC817 ×4)** côté J1 pour la simulation des boutons (écriture).
+- `HARDWARE.md` : clarification de l'architecture J1/J2 partagée
+  (ESP + HY-M154 sur J1, VL403 sur J2 — les deux cohabitent sans conflit
+  puisque le VL403 n'est pas rétroéclairé).
+- `HARDWARE.md` : ajout d'une section **alimentation 5 V** précisant que
+  le module HY-M154 nécessite 5 V côté IN (un GPIO 3,3 V est insuffisant)
+  et la procédure de câblage via VIN sur NodeMCU.
+- `HARDWARE.md` : ajout d'une section **choix de l'ESP** (ESP8266 NodeMCU v2
+  validé, ESP32-WROOM-32 dual-core recommandé en upgrade, ESP32-C6
+  mono-core à éviter pour la combinaison RS-485 + WiFi temps réel).
+- `HARDWARE.md` : ajout d'une **FAQ** (TTL485 + HY-M154, J2 pour
+  l'optocoupleur, compatibilité carte kgstorm/VL260).
+- `BUS_J1_PROTOCOL.md` : ajout du module **HY-M154** comme option
+  recommandée (déjà câblée, intègre ses résistances), avec encart
+  d'avertissement sur l'alimentation 5 V obligatoire.
+- `BUS_J1_PROTOCOL.md` : ajout de l'option **bus partagé J1/J2** (sans
+  splitter) en plus de l'option splitter existante.
+
 ## [0.2.1] - 2026-04-21
 
 ### Changed

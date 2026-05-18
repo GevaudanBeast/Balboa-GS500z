@@ -14,7 +14,7 @@
 | Afficheur | 7 segments 3 digits + 1 LED rouge | Affichage température et mode |
 | Connecteur panneau | J1 (RJ "Phone Plug") | Protocole propriétaire Balboa |
 | Connecteur auxiliaire | J2 (RJ "Phone Plug") | Même protocole que J1 |
-| Port diagnostic | J18 (3 pins) | RS-485, lecture seule |
+| Port diagnostic | J18 (3 pins) | RS-485, lecture seule (via module TTL485) |
 | Chauffage | 5.5 kW (230V, 50Hz) | Limite 16A — heater UNIQUEMENT en pompe LOW |
 | Pompe | 2 vitesses (LOW/HIGH) | |
 | Blower | Installé | Indépendant, activation manuelle |
@@ -37,9 +37,11 @@
 | Composant | Modèle | Rôle |
 |-----------|--------|------|
 | Passerelle RS485→WiFi | Elfin EW11A | Lecture RS-485 sur J18, 9600 baud, TCP :8899 |
+| Module TTL→RS-485 | TTL485 (MAX485) | Adaptation niveaux pour lecture J18 |
+| Module optocoupleur | HY-M154 (PC817 ×4) | Simulation des boutons côté J1 (écriture) |
 | Serveur HA | Raspberry Pi 5 + HAOS | Home Assistant, broker MQTT port 1883 |
 | ESP8266 #1 (IR) | NodeMCU v2 | Émetteur/récepteur IR (ESPHome) |
-| ESP8266 #2 (J2) | NodeMCU 1.0 ESP-12E | Sketch Arduino Balboa_GS501Z_MQTT_v2.ino |
+| ESP8266 #2 (J1) | NodeMCU 1.0 ESP-12E | Pilote du module HY-M154 (boutons VL403) |
 | Prise connectée | Tuya | Coupure alimentation spa |
 | Réseau WiFi | 2.4 GHz | Couverture jardin/spa via répéteur |
 
@@ -55,21 +57,26 @@ L'ESP8266 est stable uniquement alimenté via le Raspberry Pi 5.
 ```
 GS501Z+ (carte principale)
   |
-  +--[J1]-- VL403 (panneau principal — protocole Balboa, matrice courts-circuits)
+  +--[J1]-- ESP8266 + module HY-M154 (PC817 ×4) — simulation boutons (écriture)
   |           \-- pin 1 (Gris)   : Bouton TEMP
   |               pin 2 (Orange) : Bouton BLOWER
   |               pin 6 (Jaune)  : Bouton POMPE
   |               pin 7 (Bleu)   : Bouton LUMIÈRE
   |               pin 8 (Marron) : COMMUN (référence)
   |
-  +--[J2]-- Module IR Balboa récepteur 52452
-  |          (même brochage que J1)
+  +--[J2]-- VL403 (panneau physique — matrice courts-circuits)
+  |          (même brochage et même bus que J1 ; les deux coexistent)
   |
-  +--[J18]- EW11A (RS-485, RX-only)
+  +--[J18]- TTL485 (MAX485) → EW11A (RS-485, RX-only)
              pin A : RS-485 A
              pin B : RS-485 B
              pin GND : Masse
 ```
+
+> **Note J1/J2 :** J1 et J2 partagent le même bus. La documentation Balboa
+> déconseille uniquement les panneaux **rétroéclairés** branchés sur J2 seul.
+> Dans cette configuration "fractionnée" (ESP sur J1 + VL403 non rétroéclairé
+> sur J2), les deux cohabitent sans conflit.
 
 ---
 
@@ -149,4 +156,80 @@ Voir `BUS_J1_PROTOCOL.md` pour le tableau de câblage complet.
 
 Un VL403 d'occasion a été commandé pour les tests du bus J1.
 Le VL403 original est actuellement hors service (démonté).
-Dès réception : brancher sur J1 via le splitter, puis tester le câblage optocoupleurs.
+Dès réception : brancher sur J2, garder l'ESP + HY-M154 sur J1, et tester.
+
+---
+
+## 9. Points critiques d'alimentation
+
+### Module HY-M154 (PC817) — 5 V obligatoires côté IN
+
+Le module HY-M154 nécessite **5 V** côté entrée (IN) pour déclencher de
+manière fiable l'optocoupleur PC817. Une sortie GPIO ESP en 3,3 V est
+**insuffisante** pour activer la LED interne de manière propre.
+
+**Montage recommandé sur NodeMCU :**
+
+- Alimenter le NodeMCU via la broche **VIN à 5 V** (USB ou alimentation
+  externe régulée 5 V).
+- La broche **VIN** du NodeMCU expose alors le 5 V vers le module HY-M154.
+- Câbler les GPIO ESP sur les entrées IN1..IN4 du module (le module utilise
+  un niveau logique compatible TTL avec son propre transistor de
+  commutation côté LED, alimenté par VCC=5 V).
+- VCC module = 5 V (VIN), GND module = GND NodeMCU (référence commune).
+
+Sans 5 V, les commandes peuvent fonctionner partiellement mais de façon
+non fiable (déclenchements manqués, doubles appuis, etc.).
+
+---
+
+## 10. Choix de l'ESP
+
+| MCU | Statut | Notes |
+|-----|--------|-------|
+| **ESP8266 NodeMCU v2** | Validé | Configuration de référence, poll RS-485 à 500 ms stable |
+| **ESP32-WROOM-32 (dual-core)** | Recommandé si upgrade | Cœur dédié au parsing RS-485 temps réel, WiFi sur l'autre cœur |
+| **ESP32-C6 (mono-core)** | À éviter pour ce cas | Mono-cœur : risque de problèmes de timing en combinant parsing RS-485 + WiFi |
+
+Pour la lecture RS-485 seule (J18), un ESP32 quelconque convient.
+Pour combiner lecture temps réel + WiFi + commande J1, préférer un
+ESP32 dual-core.
+
+---
+
+## 11. FAQ — choix matériels
+
+### TTL485 + HY-M154 — les deux sont nécessaires ?
+
+Oui, ils répondent à deux besoins complémentaires :
+
+- **TTL485 sur J18** → télémétrie RS-485 en **lecture seule** (température,
+  mode, pompe, chauffage, cycle de filtration…).
+- **HY-M154 (PC817 ×4) sur J1** → **simulation de boutons**, c'est-à-dire
+  le **contrôle en écriture** (changement de consigne, de mode, etc.).
+
+J18 ne permet pas d'écrire ; J1 ne fournit pas la télémétrie. Les deux
+modules sont donc complémentaires, pas redondants.
+
+### Peut-on mettre l'optocoupleur sur J2 ?
+
+Oui — J1 et J2 partagent le même bus. Une configuration éprouvée :
+
+- **J1** : ESP + module HY-M154 (écriture / simulation boutons)
+- **J2** : panneau VL403 physique (lecture / contrôle manuel)
+
+Les deux cohabitent sans conflit. L'avertissement Balboa ("Panels with
+backlight should never be plugged into J2") ne s'applique qu'aux
+panneaux **rétroéclairés** — le VL403 n'a pas de rétroéclairage.
+
+### Carte personnalisée kgstorm — compatible ?
+
+Le projet kgstorm utilise une approche matérielle différente : panneau
+**VL260** (côté haut de gamme) et lignes de boutons séparées sur une
+carte personnalisée. Sa carte Lovelace est conçue autour de cette
+intégration.
+
+Cette intégration-ci expose des entités **ESPHome / HA standard**
+(`climate`, `binary_sensor`, etc.) : n'importe quelle carte Lovelace
+supportant capteurs et boutons fonctionne. Adapter la carte kgstorm
+demande quelques retouches, mais reste possible.

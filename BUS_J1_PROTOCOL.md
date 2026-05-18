@@ -88,9 +88,19 @@ GPIO → [220Ω] → Anode ─┐
 | 17 | RJ45 pin 8 (Marron) | direct | Émetteurs tous optos (commun) |
 
 **Composants recommandés :**
-- TLP281-4 (quad optocoupleur, 4 canaux en 1 boîtier DIP-16) — solution compacte
-- Ou 4× EL817 individuels (disponibles, déjà en stock)
-- Résistances 220Ω (déjà en stock)
+- **HY-M154** : module prêt-à-l'emploi à base de 4× PC817 — solution la
+  plus simple, déjà câblée (IN1..IN4, OUT1..OUT4, VCC, GND).
+- TLP281-4 (quad optocoupleur DIP-16) — alternative compacte sans module.
+- Ou 4× EL817 individuels (disponibles, déjà en stock).
+- Résistances 220Ω (déjà en stock) — inutiles avec le module HY-M154 qui
+  intègre déjà ses propres résistances.
+
+> ⚠️ **HY-M154 — alimentation 5 V obligatoire**
+>
+> Le côté entrée du module HY-M154 doit être alimenté en **5 V** (broche
+> VCC du module) pour déclencher correctement les PC817. Un GPIO ESP en
+> 3,3 V ne suffit pas. Sur NodeMCU, alimenter la carte via VIN à 5 V et
+> relier VCC HY-M154 = VIN NodeMCU, GND HY-M154 = GND NodeMCU.
 
 ### Combinaisons par activation simultanée
 
@@ -100,18 +110,29 @@ Pour simuler Mode (TEMP + LUMIÈRE) :
 Pour simuler Cycles filtration (TEMP + POMPE) :
 → Activer GPIO_TEMP ET GPIO_PUMP en même temps.
 
-### Connexion au J1 via splitter RJ45
+### Connexion : deux options possibles
+
+**Option A — Splitter sur J1 :**
 
 ```
 J1 carte GS501Z+ ─── splitter RJ45 (mâle → 2 femelles)
                            │
-                           ├── Femelle A → VL403 d'occasion (panneau physique)
+                           ├── Femelle A → VL403 (panneau physique)
                            │
-                           └── Femelle B → Câble vers optocoupleurs + ESP8266
+                           └── Femelle B → Câble vers HY-M154 + ESP8266
 ```
 
-Le VL403 et l'ESP sont en parallèle sur le même bus J1. Les optocoupleurs
-n'interfèrent pas avec le VL403 quand ils ne sont pas activés (circuit ouvert).
+**Option B — Bus partagé J1/J2 (recommandé, plus simple) :**
+
+```
+J1 carte GS501Z+ ── Câble RJ → HY-M154 (PC817 ×4) ← ESP8266
+J2 carte GS501Z+ ── Câble RJ → VL403 (panneau physique)
+```
+
+J1 et J2 partageant le même bus interne, il n'est pas nécessaire d'utiliser
+un splitter : on dédie un port à l'ESP et l'autre au panneau. Les
+optocoupleurs n'interfèrent pas avec le VL403 quand ils ne sont pas
+activés (circuit ouvert).
 
 ---
 
@@ -119,7 +140,7 @@ n'interfèrent pas avec le VL403 quand ils ne sont pas activés (circuit ouvert)
 
 ### Étape 1 — Réception VL403 d'occasion
 
-Brancher le VL403 d'occasion sur J1 via le splitter (femelle A).
+Brancher le VL403 d'occasion sur **J2** (ou sur J1 via splitter).
 Vérifier que le spa répond normalement aux appuis physiques.
 
 ### Étape 2 — Test lecture passive
