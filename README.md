@@ -1,257 +1,223 @@
-# Balboa GS500Z/GS501Z+ — Home Assistant Integration
+# Balboa GS500Z/GS501Z+ — ESPHome + Home Assistant
 
-[![Validate](https://github.com/GevaudanBeast/Balboa-GS500z/workflows/Validate/badge.svg)](https://github.com/GevaudanBeast/Balboa-GS500z/actions)
-[![Hassfest](https://github.com/GevaudanBeast/Balboa-GS500z/workflows/Hassfest/badge.svg)](https://github.com/GevaudanBeast/Balboa-GS500z/actions)
-[![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![ESPHome](https://img.shields.io/badge/ESPHome-1.5.3-blue.svg)](esphome-tools/balboa-spa-control/)
 
-> **FR** : Intégration Home Assistant pour le spa Balboa GS500Z/GS501Z+ avec
-> panneau VL403. Lecture RS-485 via J18, contrôle des boutons via J1.
+> **FR** : Intégration Home Assistant pour spa Balboa GS500Z/GS501Z+ avec
+> panneau VL403, basée sur **ESPHome** (pas de composant HACS).
+> Lecture RS-485 via J18 + contrôle des boutons via J1 (optocoupleurs).
 >
 > **EN**: Home Assistant integration for Balboa GS500Z/GS501Z+ spa with VL403
-> panel. RS-485 reading via J18, button control via J1.
-
-> **Etat du projet (mai 2026) :**
-> La **lecture RS-485** via J18 est pleinement operationnelle.
-> Le **controle** (boutons, mode, cycles) est operationnel via firmware
-> ESPHome v1.5.3 + optocoupleurs TLP281-4 sur J1 (VL403).
-> Le dashboard Lovelace cible est disponible dans `lovelace/`.
->
-> **Project status (May 2026):**
-> **RS-485 reading** via J18 is fully operational.
-> **Control** (buttons, mode, filtration cycles) is operational via ESPHome
-> firmware v1.5.3 + TLP281-4 optocouplers on J1 (VL403).
-> The target Lovelace dashboard is available in `lovelace/`.
+> panel, **ESPHome-based** (no HACS component required).
+> RS-485 reading via J18 + button control via J1 (optocouplers).
 
 ---
 
-## Fonctionnalites actuelles / Current features
+## FR — Approche / EN — Approach
 
-### FR — Lecture (operationnelle) / EN — Reading (operational)
+**FR** : Ce projet **n'est pas un composant HACS**. Il s'appuie sur :
 
-- Temperature de l'eau en temps reel / Real-time water temperature
-- Consigne de temperature / Target temperature (setpoint)
-- Mode de fonctionnement : Standard (ST), Economique (ECO), Sommeil (SL) / Operating mode: Standard (ST), Eco (ECO), Sleep (SL)
-- Etat du chauffage (actif/inactif) / Heater state (on/off)
-- Etat de la pompe (OFF/LOW/HIGH) / Pump state (OFF/LOW/HIGH)
-- Etat du blower / Blower state
-- Etat de la lumiere / Light state
+1. Un **firmware ESPHome** sur un ESP8266 NodeMCU qui :
+   - Lit le bus RS-485 du spa via un module TTL485 sur J18
+   - Simule les boutons du panneau VL403 via 4 optocoupleurs TLP281-4 sur J1
+2. La **découverte native ESPHome** dans Home Assistant (toutes les entités
+   apparaissent automatiquement après ajout de l'intégration ESPHome).
+3. Un **dashboard Lovelace** (YAML) fourni dans `lovelace/`.
 
-### FR — Controle (operationnel via ESPHome) / EN — Control (operational via ESPHome)
+**EN**: This project is **not a HACS component**. It relies on:
 
-- **Light / Blower / Pump / Temp** : via optocoupleurs TLP281-4 sur J1 (firmware ESPHome v1.5.3)
-- **Mode** (ST→ECO→SL) : combinaison Temp+Light via optocoupleurs
-- **Cycles filtration** : combinaison Temp+Pump via optocoupleurs
-- **Temperature de consigne** : N pressions Temp via ESPHome (a implementer dans HA)
-- **Light / Blower / Pump / Temp** : via TLP281-4 optocouplers on J1 (ESPHome firmware v1.5.3)
-- **Mode** (ST→ECO→SL): Temp+Light combination via optocouplers
-- **Filtration cycles**: Temp+Pump combination via optocouplers
-- **Temperature setpoint**: N Temp button presses via ESPHome (to implement in HA)
+1. An **ESPHome firmware** on an ESP8266 NodeMCU that:
+   - Reads the spa RS-485 bus via a TTL485 module on J18
+   - Simulates VL403 panel buttons via 4 TLP281-4 optocouplers on J1
+2. **Native ESPHome discovery** in Home Assistant (all entities appear
+   automatically after adding the ESPHome integration).
+3. A **Lovelace dashboard** (YAML) provided in `lovelace/`.
 
 ---
 
-## Prerequis / Prerequisites
+## FR — Fonctionnalités / EN — Features
 
-**FR** :
-- Home Assistant 2023.1 ou superieur
-- Spa Balboa GS500Z ou GS501Z+ avec panneau VL403
-- Module RS-485 TTL485 (MAX485) sur J18, 9600 baud
-- ESP8266 NodeMCU + optocoupleurs TLP281-4 sur J1 (firmware ESPHome v1.5.3)
+### FR — Lecture (opérationnelle) / EN — Reading (operational)
 
-**EN**:
-- Home Assistant 2023.1 or higher
-- Balboa GS500Z or GS501Z+ spa with VL403 panel
-- RS-485 TTL485 (MAX485) module on J18, 9600 baud
-- ESP8266 NodeMCU + TLP281-4 optocouplers on J1 (ESPHome firmware v1.5.3)
+- Température eau / Water temperature
+- Consigne de température / Target setpoint
+- Mode : Standard (ST), Économique (ECO), Sommeil (SL) / Mode: Standard (ST), Eco (ECO), Sleep (SL)
+- État du chauffage / Heater state
+- État pompe (OFF/LOW/HIGH) / Pump state
+- État blower, lumière / Blower, light states
+- Codes diagnostic (HH, OH, IC, COMM) / Diagnostic codes
 
----
+### FR — Contrôle (opérationnel via boutons) / EN — Control (operational via buttons)
 
-## Installation
-
-### HACS (recommande)
-
-1. HACS -> Integrations -> menu (...)  -> Depots personnalises
-2. Ajouter : `https://github.com/GevaudanBeast/Balboa-GS500z`
-3. Rechercher "Balboa GS500Z" et installer
-4. Redemarrer Home Assistant
-
-### Manuelle
-
-Copier `custom_components/balboa_gs500z/` dans votre dossier `custom_components/`.
+- Light / Blower / Pump / Temp : pression sur bouton ESPHome / ESPHome button press
+- Mode (ST→ECO→SL) : combinaison Temp+Light / Temp+Light combination
+- Cycles filtration / Filtration cycles : combinaison Temp+Pump / Temp+Pump combination
 
 ---
 
-## Configuration
-
-1. Configuration -> Integrations -> + Ajouter une integration
-2. Rechercher "Balboa GS500Z Spa"
-3. Renseigner l'adresse IP de l'EW11A et le port (defaut : 8899)
-
-### Options
-
-- **Taille fenetre glissante** (3-20) : nombre de trames pour validation (defaut : 5)
-- **Garde-fou d'ordre** : valide les transitions ST->ECO->SL->ST (defaut : active)
-
----
-
-## Entites creees / Exposed entities
-
-### FR — Composant HA (`custom_components/balboa_gs500z`)
-
-| Entite | Type | Description |
-|--------|------|-------------|
-| `climate.spa_balboa` | Climate | Temperature, consigne, mode ST/ECO/SL |
-| `binary_sensor.spa_heater` | Binary sensor | Etat chauffage / Heater state |
-
-### FR — Firmware ESPHome (`balboa-spa-control`) / EN — ESPHome firmware
-
-| Entite | Type | Description FR | EN |
-|--------|------|---|---|
-| `sensor.*_01_spa_eau_temp` | Sensor | Temperature eau | Water temp |
-| `sensor.*_02_spa_consigne` | Sensor | Consigne | Setpoint |
-| `text_sensor.*_03_spa_mode` | Text sensor | Mode ST/ECO/SL | Mode |
-| `binary_sensor.*_04a_spa_chauffage` | Binary sensor | Chauffage | Heater |
-| `binary_sensor.*_04b_spa_lumiere` | Binary sensor | Lumiere | Light |
-| `text_sensor.*_05_spa_diag` | Text sensor | Diagnostic (OK/HH/OH/IC/COMM) | Diagnostic |
-| `button.*_03a` a `03f` | Buttons | Boutons VL403 + combinaisons | VL403 buttons + combos |
-| `sensor.*_91_spa_wifi_signal` | Sensor | RSSI WiFi | WiFi RSSI |
-| `binary_sensor.*_98_spa_en_ligne` | Binary sensor | ESP en ligne | ESP online |
-
-> Le prefixe `*` correspond a `balboa_spa_control` (nom du device ESPHome).
-> Voir `lovelace/README.md` pour la liste complete et le statut de chaque entite.
->
-> The `*` prefix corresponds to `balboa_spa_control` (ESPHome device name).
-> See `lovelace/README.md` for the full list and implementation status.
-
----
-
-## Configuration EW11A
-
-| Parametre | Valeur |
-|-----------|--------|
-| Mode | TCP Server |
-| Baud Rate | 9600 |
-| Data Bits | 8 |
-| Stop Bits | 1 |
-| Parity | None |
-| Port | 8899 |
-
----
-
-## Exemples d'automatisations
-
-```yaml
-# Passer en mode ECO la nuit
-automation:
-  - alias: "Spa - Mode ECO la nuit"
-    trigger:
-      - platform: time
-        at: "23:00:00"
-    action:
-      - service: climate.set_preset_mode
-        target:
-          entity_id: climate.spa
-        data:
-          preset_mode: "eco"
-```
-
----
-
-## Architecture technique
+## FR — Architecture matérielle / EN — Hardware architecture
 
 ```
-custom_components/balboa_gs500z/
-  __init__.py        # Setup integration
-  manifest.json      # Metadonnees HACS
-  const.py           # Constantes protocole
-  config_flow.py     # Configuration UI
-  tcp_client.py      # Client TCP EW11A — parsing trames RS-485
-  coordinator.py     # Fenetre glissante + memoire SL (v5.8.4)
-  climate.py         # Entite climate
-  binary_sensor.py   # Entite heater
-  services.yaml      # Definition services HA
-  strings.json       # Traductions
-  translations/      # EN + FR
+                  ┌──────────────────────────────┐
+                  │   Carte Balboa GS501Z+       │
+                  │                              │
+        J18 ──────┤ RS-485 (lecture/read-only)   │
+                  │                              │
+        J1 ───────┤ Bus boutons (VL403)          │
+                  │                              │
+        J2 ───────┤ VL403 panneau physique       │
+                  │   (panel)                    │
+                  └──────────────────────────────┘
+                          │             │
+                          │ J18         │ J1
+                          ▼             ▼
+                  ┌──────────┐   ┌──────────────┐
+                  │ TTL485   │   │ TLP281-4 ×4  │
+                  │ MAX485   │   │ (boutons)    │
+                  └────┬─────┘   └──────┬───────┘
+                       │ TXD            │ IN1..IN4
+                       ▼                ▼
+                  ┌──────────────────────────────┐
+                  │      ESP8266 NodeMCU         │
+                  │      ESPHome v1.5.3          │
+                  └─────────────┬────────────────┘
+                                │ WiFi
+                                ▼
+                  ┌──────────────────────────────┐
+                  │      Home Assistant          │
+                  │  Native ESPHome integration  │
+                  └──────────────────────────────┘
 ```
+
+Voir / See : `HARDWARE.md`, `BUS_J1_PROTOCOL.md`.
 
 ---
 
-## Protocole RS-485
+## FR — Prérequis / EN — Prerequisites
 
-Les trames sont au format `[643F2B...]` (27 octets, 54 chars hex).
-
-| Byte | Role | Note |
-|------|------|------|
-| 3 | Temperature eau | valeur * 0.5 = degC |
-| 5 | Consigne | valeur * 0.5 = degC |
-| 17 | Pompe + Blower | bit7=blower, bits0-6=vitesse pompe |
-| 19 | Heater | bit0 = ON/OFF (universel tous modes) |
-| 20 | Lumiere | 0x02/0x03 = ON |
-| 23 | Mode | 0x20=ST, 0x00=ECO, 0x40=SL, 0x60=transitoire |
-
-Documentation complete : `PROTOCOL.md`
+| Hardware | Quantité / Quantity | Note |
+|---|---|---|
+| Spa Balboa GS500Z ou/or GS501Z+ + panneau/panel VL403 | 1 | — |
+| ESP8266 NodeMCU v2 | 1 | Pas d'ESP32-C6 mono-coeur / No ESP32-C6 single-core |
+| Module TTL485 (MAX485) | 1 | RS-485 → TTL sur/on J18 |
+| Optocoupleurs TLP281-4 (ou/or 4× EL817) | 1 | Simulation boutons J1 / J1 button sim |
+| Câbles RJ45 + Dupont | — | T568B |
+| Home Assistant 2023.1+ | — | Avec/with ESPHome integration |
 
 ---
 
-## Debogage
-
-### Activer les logs debug
-
-```yaml
-logger:
-  default: info
-  logs:
-    custom_components.balboa_gs500z: debug
-```
-
-### Tester la connexion
+## FR — Installation rapide / EN — Quick install
 
 ```bash
-telnet <IP_EW11A> 8899
+# 1. Cloner / Clone
+git clone https://github.com/GevaudanBeast/Balboa-GS500z.git
+cd Balboa-GS500z/esphome-tools/balboa-spa-control
+
+# 2. Configurer les secrets / Configure secrets
+cp secrets.yaml.example secrets.yaml
+# Éditer secrets.yaml avec votre WiFi + clé API
+# Edit secrets.yaml with your WiFi + API key
+
+# 3. Flasher / Flash
+pip install esphome
+esphome run balboa-spa-control-v1.5.3.yaml
+
+# 4. Dans Home Assistant / In Home Assistant :
+# - L'ESP apparaît dans ESPHome → Accepter
+# - The ESP appears in ESPHome → Accept
+# - Coller lovelace/spa-dashboard.yaml dans un dashboard
+# - Paste lovelace/spa-dashboard.yaml in a dashboard
 ```
 
----
-
-## Limitations connues / Known limitations
-
-- **J18 lecture seule / J18 read-only** : `set_temperature` et `set_mode`
-  dans le composant HA sont des stubs. Le controle passe par le firmware
-  ESPHome sur J1 (boutons VL403). /
-  `set_temperature` and `set_mode` in the HA component are stubs. Control
-  goes through the ESPHome firmware on J1 (VL403 buttons).
-- **WiFi ESP marginal** (~-77 dBm) : stable uniquement alimente via USB. /
-  Stable only when powered via USB.
-- **Mode SL** : b23 peut valoir 0x00 une fois SL stabilise (identique a ECO).
-  Resolu par la memoire SL de 120 s dans le coordinateur. /
-  b23 can be 0x00 once SL is stable (same as ECO). Resolved by the 120s SL
-  memory in the coordinator.
-- **GPIO16 (D0) interdit** pour les sorties optocoupleur : transitoire HIGH
-  au boot (cf. FIX-1 firmware v1.5.3). Utiliser GPIO15 (D8). /
-  GPIO16 (D0) must not be used for optocoupler outputs: HIGH glitch at boot
-  (see FIX-1 firmware v1.5.3). Use GPIO15 (D8) instead.
+Guide complet / Full guide : `INSTALL.md`.
 
 ---
 
-## Documentation
+## FR — Entités exposées / EN — Exposed entities
 
-| Fichier / File | Contenu FR | EN content |
-|---------|---------|---------|
-| `PROTOCOL.md` | Protocole RS-485 complet, mapping bytes, algo v5.8.4 | Full RS-485 protocol, byte mapping, v5.8.4 algo |
-| `HARDWARE.md` | Architecture materielle, cablage, composants | Hardware architecture, wiring, components |
-| `BUS_J1_PROTOCOL.md` | Protocole bus J1/J2 + plan cablage optocoupleurs | J1/J2 bus protocol + optocoupler wiring |
-| `esphome-tools/balboa-spa-control/README.md` | Firmware ESPHome v1.5.3, entites, GPIO | ESPHome firmware v1.5.3, entities, GPIO |
-| `lovelace/README.md` | Dashboard Lovelace cible + statut entites | Target Lovelace dashboard + entity status |
-| `APPROACHES_TESTED.md` | Toutes les pistes testees et leurs resultats | All tested approaches and results |
-| `IR_CODES.md` | Codes IR confirmes + resultats brute force | Confirmed IR codes + brute force results |
-| `INSTALL.md` | Instructions d'installation detaillees | Detailed installation instructions |
+Toutes les entités sont préfixées `balboa_spa_control_` (nom du device ESPHome).
+
+All entities are prefixed `balboa_spa_control_` (ESPHome device name).
+
+| Entité / Entity | Type | FR | EN |
+|---|---|---|---|
+| `sensor.*_01_spa_eau_temp` | Sensor | Température eau | Water temp |
+| `sensor.*_02_spa_consigne` | Sensor | Consigne | Setpoint |
+| `text_sensor.*_03_spa_mode` | Text | Mode ST/ECO/SL | Mode |
+| `binary_sensor.*_04a_spa_chauffage` | Binary | Chauffage | Heater |
+| `binary_sensor.*_04b_spa_lumiere` | Binary | Lumière | Light |
+| `text_sensor.*_05_spa_diag` | Text | Diagnostic | Diagnostic |
+| `button.*_03a..03f` | Buttons | Boutons VL403 + combos | VL403 buttons + combos |
+| `binary_sensor.*_98_spa_en_ligne` | Binary | ESP en ligne | ESP online |
+
+Liste complète / Full list : `esphome-tools/balboa-spa-control/README.md`.
 
 ---
 
-## Licence
+## FR — Dashboard Lovelace / EN — Lovelace dashboard
 
-MIT — voir `LICENSE`.
+Un dashboard prêt à l'emploi est fourni dans `lovelace/spa-dashboard.yaml`.
 
-## Contribution
+A ready-to-use dashboard is provided in `lovelace/spa-dashboard.yaml`.
 
-Issues et pull requests bienvenus.
-Voir `CONTRIBUTING.md` pour les conventions.
+![Aperçu / Preview](docs/screenshot-lovelace.png)
+
+Voir `lovelace/README.md` pour le détail des entités et helpers requis.
+
+See `lovelace/README.md` for the entity and helper details.
+
+---
+
+## FR — Documentation / EN — Documentation
+
+| Fichier / File | FR | EN |
+|---|---|---|
+| `HARDWARE.md` | Architecture matérielle, câblage, composants | Hardware architecture, wiring, components |
+| `BUS_J1_PROTOCOL.md` | Bus J1/J2, pinout VL403, plan câblage optocoupleurs | J1/J2 bus, VL403 pinout, optocoupler wiring |
+| `PROTOCOL.md` | Protocole RS-485 complet, mapping bytes | Full RS-485 protocol, byte mapping |
+| `esphome-tools/balboa-spa-control/README.md` | Firmware ESPHome v1.5.3 | ESPHome firmware v1.5.3 |
+| `lovelace/README.md` | Dashboard cible + statut entités | Target dashboard + entity status |
+| `IR_CODES.md` | Codes IR (approche alternative) | IR codes (alternative approach) |
+| `APPROACHES_TESTED.md` | Pistes testées et résultats | Tested approaches and results |
+| `INSTALL.md` | Guide d'installation détaillé | Detailed installation guide |
+| `CHANGELOG.md` | Historique des changements | Change history |
+
+---
+
+## FR — Limitations connues / EN — Known limitations
+
+- **J18 lecture seule / read-only** : pas d'écriture possible via RS-485.
+  Le contrôle passe par J1 (boutons). / No write via RS-485. Control goes
+  through J1 (buttons).
+- **GPIO16 (D0) interdit/forbidden** pour les sorties optocoupleur :
+  transitoire HIGH au boot (cf./see FIX-1 firmware v1.5.3).
+- **HY-M154** : module à vérifier au multimètre avant câblage
+  (cathode/anode-commun). / Module to check with multimeter before wiring
+  (common cathode/anode).
+- **ESP32-C6 mono-cœur / single-core** : déconseillé pour combiner RS-485 +
+  WiFi temps réel. / Not recommended for combining real-time RS-485 + WiFi.
+
+---
+
+## FR — Compatibilité / EN — Compatibility
+
+| Spa / Panel | Statut / Status | Note |
+|---|---|---|
+| GS500Z / VL403 | ✅ Validé / Validated | Configuration de référence |
+| GS501Z+ / VL403 | ✅ Validé / Validated | Identique côté soft / Same software |
+| GS510SZ / VL700S | ❌ Non compatible | Voir/See MagnusPer (architecture différente) |
+| GS100 / VL260 | ❌ Non compatible | Voir/See kgstorm (UART) |
+
+---
+
+## FR — Licence et contribution / EN — License and contribution
+
+MIT — voir/see `LICENSE`.
+
+**FR** : Issues et pull requests bienvenus. Le projet vise à rester simple
+(firmware ESPHome + YAML), pas un composant HACS.
+
+**EN**: Issues and pull requests welcome. The project aims to stay simple
+(ESPHome firmware + YAML), not a HACS component.
+
+Voir / See `CONTRIBUTING.md`.

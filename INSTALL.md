@@ -1,567 +1,294 @@
-# Guide d'Installation — Balboa GS500Z
-# Installation Guide — Balboa GS500Z
+# Installation Guide — Balboa GS500Z / GS501Z+
 
-> **FR** : Ce guide vous accompagne pas à pas dans l'installation et la
-> configuration complète : matériel, firmware ESPHome, intégration HA et
-> dashboard Lovelace.
+> **FR** : Ce guide couvre l'installation complète : matériel, firmware
+> ESPHome, intégration Home Assistant et dashboard Lovelace. Aucun
+> composant HACS n'est requis.
 >
-> **EN**: This guide walks you through the complete installation and
-> configuration: hardware, ESPHome firmware, HA integration and Lovelace
-> dashboard.
+> **EN**: This guide covers the full installation: hardware, ESPHome
+> firmware, Home Assistant integration and Lovelace dashboard. No HACS
+> component required.
+
+---
 
 ## FR — Table des matières / EN — Table of contents
 
-1. [Prérequis / Prerequisites](#prérequis--prerequisites)
-2. [Installation du matériel / Hardware installation](#installation-du-matériel--hardware-installation)
-3. [Firmware ESPHome](#firmware-esphome)
-4. [Configuration de l'EW11A / EW11A configuration](#configuration-de-lew11a--ew11a-configuration) *(optionnel si TTL485 seul / optional if TTL485 only)*
-5. [Installation de l'intégration HA / HA integration installation](#installation-de-lintégration--ha-integration-installation)
-6. [Dashboard Lovelace](#dashboard-lovelace)
-7. [Vérification / Verification](#vérification--verification)
-8. [Dépannage / Troubleshooting](#dépannage--troubleshooting)
+1. [Prérequis / Prerequisites](#1-prérequis--prerequisites)
+2. [Câblage matériel / Hardware wiring](#2-câblage-matériel--hardware-wiring)
+3. [Firmware ESPHome](#3-firmware-esphome)
+4. [Découverte dans Home Assistant / Discovery in Home Assistant](#4-découverte-dans-home-assistant--discovery-in-home-assistant)
+5. [Dashboard Lovelace](#5-dashboard-lovelace)
+6. [Vérification / Verification](#6-vérification--verification)
+7. [Dépannage / Troubleshooting](#7-dépannage--troubleshooting)
 
-## 🔧 Prérequis / Prerequisites
+---
 
-### FR — Matériel requis / EN — Required hardware
+## 1. Prérequis / Prerequisites
 
-- ✅ Spa Balboa avec carte de contrôle **GS500Z** / Balboa spa with **GS500Z** controller board
-- ✅ Clavier Balboa **VL403** / Balboa **VL403** keypad
-- ✅ Module **TTL485 (MAX485)** sur J18 pour la lecture RS-485 / **TTL485 (MAX485)** module on J18 for RS-485 reading
-- ✅ **ESP8266 NodeMCU v2** + **optocoupleurs TLP281-4** sur J1 pour le contrôle / **ESP8266 NodeMCU v2** + **TLP281-4 optocouplers** on J1 for control
-- ✅ Home Assistant (version 2023.1 ou supérieure / or higher)
+### FR — Matériel / EN — Hardware
 
-> Le module **EW11A** reste utilisable comme passerelle RS-485→WiFi à la place
-> du TTL485 — la configuration reste identique côté HA. /
-> The **EW11A** module can still be used as an RS-485→WiFi bridge instead of
-> the TTL485 — the HA configuration remains identical.
+| Composant / Component | Quantité / Qty | Note |
+|---|---|---|
+| Spa Balboa GS500Z/GS501Z+ + VL403 | 1 | — |
+| ESP8266 NodeMCU v2 | 1 | Pas d'ESP32-C6 mono-cœur / No ESP32-C6 single-core |
+| Module TTL485 (MAX485) | 1 | Sur/On J18 |
+| Optocoupleurs TLP281-4 ou/or 4× EL817 | 1 | Sur/On J1 |
+| Résistances 220 Ω | 4 | Si EL817 nus / If raw EL817 |
+| Câble RJ45 + Dupont | — | T568B recommandé / recommended |
+| Alimentation 5 V régulée | 1 | Via USB ou/or VIN NodeMCU |
 
-### Connaissances requises
+### FR — Logiciel / EN — Software
 
-- 🔨 Câblage électrique de base (raccordement RS-485)
-- 💻 Utilisation de Home Assistant
-- 🌐 Configuration réseau de base (adresse IP, port)
+- **Home Assistant** ≥ 2023.1 avec intégration ESPHome / with ESPHome integration
+- **Python** ≥ 3.8 (pour flasher l'ESP / to flash the ESP)
+- **ESPHome CLI** : `pip install esphome`
 
-### Avertissement de sécurité
+### FR — Avertissement / EN — Warning
 
-⚠️ **Attention** : Avant toute intervention sur le spa, coupez l'alimentation électrique au disjoncteur.
+⚠️ **FR** : Avant toute intervention sur le spa, **couper l'alimentation**
+au disjoncteur.
 
-## 🔌 Installation du matériel
+⚠️ **EN**: Before any intervention on the spa, **cut power** at the breaker.
 
-### Étape 1 : Localiser les connexions RS-485
+---
 
-1. Ouvrez le compartiment électronique du spa
-2. Localisez la carte de contrôle GS500Z
-3. Repérez les bornes RS-485 :
-   - Généralement étiquetées **A**, **B**, **GND** (ou **+**, **-**, **⏚**)
-   - Consultez le manuel de votre spa si nécessaire
+## 2. Câblage matériel / Hardware wiring
 
-### Étape 2 : Raccordement du module EW11A
+### 2.1 Module TTL485 sur J18 (lecture RS-485 / RS-485 reading)
 
-#### Schéma de câblage
+| TTL485 | ESP8266 NodeMCU |
+|---|---|
+| VCC | 3V3 |
+| GND | GND |
+| TXD | D2 (GPIO4) — **TXD du module, pas RXD / module TXD, not RXD** |
+| D+ / A | J18 borne / terminal A |
+| D− / B | J18 borne / terminal B |
 
-```
-┌──────────────────────────┐
-│   Carte GS500Z           │
-│                          │
-│   RS-485  A ●────────────┼──── A (ou +)
-│           B ●────────────┼──── B (ou -)
-│         GND ●────────────┼──── GND
-└──────────────────────────┘
-                            │
-                            │
-                    ┌───────┴──────┐
-                    │   EW11A      │
-                    │              │
-                    │  [WiFi Icon] │
-                    └──────────────┘
-```
+### 2.2 Optocoupleurs TLP281-4 sur J1 (boutons VL403 / VL403 buttons)
 
-#### Raccordement physique
+| Canal / Channel | ESP GPIO | NodeMCU | Pin RJ45 VL403 | Couleur / Color |
+|---|---|---|---|---|
+| IN1 = BLOWER | GPIO14 | D5 | pin 7 | Orange |
+| IN2 = POMPE/PUMP | GPIO12 | D6 | pin 3 | Jaune / Yellow |
+| IN3 = TEMP | GPIO13 | D7 | pin 8 | Gris / Grey |
+| IN4 = LIGHT | **GPIO15** | **D8** | pin 2 | Bleu / Blue |
 
-1. **Connexion A** (ou +) :
-   - Reliez la borne A de la GS500Z à la borne A de l'EW11A
-   - Utilisez un fil de couleur distinctive (ex: rouge)
-
-2. **Connexion B** (ou -) :
-   - Reliez la borne B de la GS500Z à la borne B de l'EW11A
-   - Utilisez un fil de couleur différente (ex: noir)
-
-3. **Connexion GND** :
-   - Reliez la masse GND de la GS500Z à la masse de l'EW11A
-   - Utilisez un fil vert/jaune ou blanc
-
-4. **Alimentation de l'EW11A** :
-   - Selon le modèle, alimentez l'EW11A en 5V ou 12V
-   - Utilisez une alimentation dédiée ou la sortie auxiliaire du spa (si disponible)
-
-### Étape 3 : Vérification du câblage
-
-- ✅ Les connexions sont bien serrées
-- ✅ Aucun fil dénudé ne touche le châssis
-- ✅ Les polarités A/B sont respectées
-- ✅ L'EW11A s'allume (LED allumée)
-
-## ⚡ Firmware ESPHome
-
-> **FR** : Cette section décrit l'installation du firmware ESPHome sur
-> l'ESP8266 NodeMCU qui pilote les optocoupleurs J1.
+> ⚠️ **FR** : Ne **PAS** utiliser GPIO16 (D0) pour les sorties optocoupleur :
+> transitoire HIGH au boot (cf. FIX-1 firmware v1.5.3).
 >
-> **EN**: This section describes installing the ESPHome firmware on the
-> ESP8266 NodeMCU that drives the J1 optocouplers.
+> ⚠️ **EN**: Do **NOT** use GPIO16 (D0) for optocoupler outputs:
+> HIGH glitch at boot (see FIX-1 firmware v1.5.3).
 
-### FR — Prérequis ESPHome / EN — ESPHome prerequisites
+### 2.3 Côté VL403 / VL403 side
+
+- HVCC module → pin 1 RJ45 (Marron/Brown, Commun +5 V)
+- HGND module → GND côté/side VL403
+- **Retirer les cavaliers rouges d'isolation / Remove red isolation jumpers**
+
+Pinout complet / Full pinout : `BUS_J1_PROTOCOL.md` §1.
+
+### 2.4 Alimentation / Power supply
+
+⚠️ **FR** : Alimenter le NodeMCU via **VIN à 5 V** (USB ou alim externe).
+Le côté IN du module optocoupleur nécessite 5 V — un GPIO 3,3 V seul est
+insuffisant pour déclencher de manière fiable.
+
+⚠️ **EN**: Power the NodeMCU via **VIN at 5 V** (USB or external supply).
+The optocoupler module IN side requires 5 V — a 3.3 V GPIO alone is not
+enough to trigger reliably.
+
+---
+
+## 3. Firmware ESPHome
+
+### 3.1 FR — Préparer les secrets / EN — Prepare secrets
+
+```bash
+cd esphome-tools/balboa-spa-control
+cp secrets.yaml.example secrets.yaml
+```
+
+**FR** : Éditer `secrets.yaml` et renseigner :
+
+**EN**: Edit `secrets.yaml` and fill in:
+
+```yaml
+wifi_ssid: "VotreSSID"
+wifi_password: "VotreMotDePasse"
+ap_password: "MotDePasseAPFallback"
+api_encryption_key: "..."   # openssl rand -base64 32
+ota_password: "..."
+```
+
+### 3.2 FR — Installer ESPHome / EN — Install ESPHome
 
 ```bash
 pip install esphome
 ```
 
-### FR — Étape 1 : Créer le fichier secrets
-
-**FR** : Copier le template et renseigner vos valeurs :
-
-**EN**: Copy the template and fill in your values:
-
-```bash
-cd esphome-tools/balboa-spa-control
-cp secrets.yaml.example secrets.yaml
-# Editer secrets.yaml avec votre SSID, mot de passe WiFi, cle API, mot de passe OTA
-# Edit secrets.yaml with your SSID, WiFi password, API key, OTA password
-```
-
-Générer une clé API / Generate an API key:
-
-```bash
-openssl rand -base64 32
-```
-
-### FR — Étape 2 : Flasher l'ESP / EN — Step 2: Flash the ESP
+### 3.3 FR — Flasher l'ESP / EN — Flash the ESP
 
 **FR** : Connecter l'ESP8266 NodeMCU en USB, puis :
 
 **EN**: Connect the ESP8266 NodeMCU via USB, then:
 
 ```bash
-esphome run esphome-tools/balboa-spa-control/balboa-spa-control-v1.5.3.yaml
+esphome run balboa-spa-control-v1.5.3.yaml
 ```
 
-**FR** : Les mises à jour suivantes peuvent se faire en OTA (sans fil).
+**FR** : Les mises à jour suivantes peuvent se faire **en OTA** (sans fil)
+via la même commande, sans connexion USB.
 
-**EN**: Subsequent updates can be done OTA (wirelessly).
+**EN**: Subsequent updates can be done **OTA** (wirelessly) via the same
+command, without USB connection.
 
-### FR — Étape 3 : Vérifier dans HA / EN — Step 3: Check in HA
+### 3.4 FR — Vérifier les logs / EN — Check logs
 
-**FR** : L'ESP apparaît automatiquement dans HA → Paramètres → Appareils
-et services → ESPHome. Accepter l'intégration. Toutes les entités
-(`sensor.*`, `binary_sensor.*`, `button.*`) sont découvertes automatiquement.
+```bash
+esphome logs balboa-spa-control-v1.5.3.yaml
+```
 
-**EN**: The ESP appears automatically in HA → Settings → Devices and services
-→ ESPHome. Accept the integration. All entities (`sensor.*`, `binary_sensor.*`,
-`button.*`) are discovered automatically.
+**FR** : Vous devez voir des trames `[643F2B...]` toutes les ~100 ms ainsi
+que des lignes `[balboa]` indiquant le décodage.
 
-> Voir `esphome-tools/balboa-spa-control/README.md` pour la liste complète
-> des entités et le câblage détaillé TTL485 + TLP281-4. /
-> See `esphome-tools/balboa-spa-control/README.md` for the full entity list
-> and detailed TTL485 + TLP281-4 wiring.
+**EN**: You should see `[643F2B...]` frames every ~100 ms plus `[balboa]`
+log lines showing the decoding.
 
 ---
 
-## 📡 Configuration de l'EW11A
+## 4. Découverte dans Home Assistant / Discovery in Home Assistant
 
-### Étape 1 : Connexion au module
+### 4.1 FR — Ajouter l'intégration ESPHome / EN — Add the ESPHome integration
 
-1. **Branchez l'EW11A**
-2. **Connectez-vous au réseau WiFi de l'EW11A** :
-   - Nom du réseau : généralement `EW11A_XXXXXX`
-   - Mot de passe : consultez le manuel (souvent `12345678` ou vide)
+**FR** : Home Assistant détecte automatiquement le périphérique ESPHome sur
+le réseau. Sinon :
 
-3. **Ouvrez votre navigateur** et allez à :
-   - Adresse : `http://192.168.4.1` (ou adresse par défaut du module)
+**EN**: Home Assistant automatically detects the ESPHome device on the
+network. Otherwise:
 
-### Étape 2 : Configuration WiFi
+1. **FR** : Paramètres → Appareils et services → + Ajouter une intégration → ESPHome.
+   **EN**: Settings → Devices and services → + Add integration → ESPHome.
+2. **FR** : Hôte : adresse IP de l'ESP (ex: `192.168.1.50`).
+   **EN**: Host: ESP IP address (e.g. `192.168.1.50`).
+3. **FR** : Renseigner la **clé API** de `secrets.yaml`.
+   **EN**: Enter the **API key** from `secrets.yaml`.
 
-Dans l'interface web de l'EW11A :
+### 4.2 FR — Entités créées automatiquement / EN — Auto-created entities
 
-1. **Allez dans "Network Settings"** (ou "Paramètres réseau")
-2. **Configurez le WiFi** :
-   - Mode : **Station** (client WiFi)
-   - SSID : Nom de votre réseau WiFi
-   - Mot de passe : Mot de passe de votre réseau
-3. **Sauvegardez** et **redémarrez** le module
+**FR** : Toutes les entités du firmware sont découvertes automatiquement.
 
-### Étape 3 : Configuration RS-485
+**EN**: All firmware entities are auto-discovered.
 
-Dans l'interface web de l'EW11A :
+| Entité / Entity | Type |
+|---|---|
+| `sensor.balboa_spa_control_01_spa_eau_temp` | Température eau / Water temp |
+| `sensor.balboa_spa_control_02_spa_consigne` | Consigne / Setpoint |
+| `text_sensor.balboa_spa_control_03_spa_mode` | Mode ST/ECO/SL |
+| `binary_sensor.balboa_spa_control_04a_spa_chauffage` | Chauffage / Heater |
+| `binary_sensor.balboa_spa_control_04b_spa_lumiere` | Lumière / Light |
+| `text_sensor.balboa_spa_control_05_spa_diag` | Diagnostic |
+| `button.balboa_spa_control_03a..03f` | Boutons VL403 + combos |
 
-1. **Allez dans "Serial Settings"** (ou "Paramètres série")
-2. **Configurez les paramètres RS-485** :
-   ```
-   Baud Rate:    9600
-   Data Bits:    8
-   Stop Bits:    1
-   Parity:       None
-   Flow Control: None
-   ```
+Liste complète / Full list : `esphome-tools/balboa-spa-control/README.md`.
 
-### Étape 4 : Configuration TCP
+---
 
-1. **Allez dans "Network Protocol"** (ou "Protocole réseau")
-2. **Configurez le mode TCP** :
-   ```
-   Protocol:    TCP Server
-   Local Port:  8899 (ou port de votre choix)
-   ```
-3. **Sauvegardez** et **redémarrez**
+## 5. Dashboard Lovelace
 
-### Étape 5 : Trouver l'adresse IP de l'EW11A
-
-Après redémarrage, l'EW11A se connecte à votre réseau WiFi.
-
-**Option 1 : Via l'interface du routeur**
-- Consultez la liste des appareils connectés
-- Cherchez `EW11A` ou l'adresse MAC notée sur le module
-
-**Option 2 : Via un scan réseau**
-```bash
-# Linux/Mac
-nmap -sn 192.168.1.0/24
-
-# Windows (avec nmap installé)
-nmap -sn 192.168.1.0/24
-```
-
-**Option 3 : Via une app mobile**
-- Installez "Fing" ou "Network Scanner"
-- Scannez votre réseau local
-
-### Étape 6 : Tester la connexion
-
-```bash
-# Remplacez 192.168.1.100 par l'IP de votre EW11A
-telnet 192.168.1.100 8899
-```
-
-Si tout fonctionne, vous devriez voir des trames défiler :
-```
-[643F2B...]
-[643F2B...]
-[643F2B...]
-```
-
-Tapez `Ctrl+]` puis `quit` pour quitter telnet.
-
-✅ **Parfait !** L'EW11A fonctionne correctement.
-
-## 💾 Installation de l'intégration
-
-### Méthode 1 : HACS (Recommandée)
-
-1. **Ouvrez HACS** dans Home Assistant
-   - Menu → HACS
-
-2. **Ajoutez le dépôt** :
-   - Cliquez sur les 3 points (⋮) en haut à droite
-   - Choisissez "Custom repositories"
-   - Ajoutez :
-     ```
-     https://github.com/GevaudanBeast/Balboa-GS500z
-     ```
-   - Catégorie : **Integration**
-   - Cliquez sur "Add"
-
-3. **Installez l'intégration** :
-   - Recherchez "Balboa GS500Z"
-   - Cliquez sur "Download"
-   - Redémarrez Home Assistant
-
-### Méthode 2 : Installation manuelle
-
-1. **Téléchargez l'intégration** :
-   ```bash
-   cd /config
-   git clone https://github.com/GevaudanBeast/Balboa-GS500z.git
-   ```
-
-2. **Copiez les fichiers** :
-   ```bash
-   cp -r Balboa-GS500z/custom_components/balboa_gs500z custom_components/
-   ```
-
-3. **Vérifiez la structure** :
-   ```
-   /config/custom_components/balboa_gs500z/
-   ├── __init__.py
-   ├── manifest.json
-   ├── config_flow.py
-   ├── const.py
-   ├── coordinator.py
-   ├── tcp_client.py
-   ├── climate.py
-   ├── binary_sensor.py
-   ├── services.yaml
-   ├── strings.json
-   └── translations/
-       ├── en.json
-       └── fr.json
-   ```
-
-4. **Redémarrez Home Assistant**
-
-## ⚙️ Configuration dans Home Assistant
-
-### Étape 1 : Ajouter l'intégration
-
-1. **Allez dans les paramètres** :
-   - Menu → Paramètres → Appareils et services
-
-2. **Ajoutez l'intégration** :
-   - Cliquez sur "+ Ajouter une intégration"
-   - Recherchez "Balboa GS500Z"
-   - Cliquez sur l'intégration
-
-### Étape 2 : Configuration initiale
-
-Dans le formulaire de configuration :
-
-```
-┌──────────────────────────────────────────┐
-│ Configuration du Spa Balboa GS500Z      │
-├──────────────────────────────────────────┤
-│                                          │
-│ Adresse IP de l'hôte:                    │
-│ [192.168.1.100        ]                  │
-│                                          │
-│ Port:                                    │
-│ [8899                 ]                  │
-│                                          │
-│         [Annuler]      [Soumettre]       │
-└──────────────────────────────────────────┘
-```
-
-- **Host** : Adresse IP de votre EW11A (ex: `192.168.1.100`)
-- **Port** : Port TCP configuré (par défaut : `8899`)
-
-3. **Cliquez sur "Soumettre"**
-
-L'intégration va tester la connexion. Si tout se passe bien, vous verrez :
-
-```
-✅ Configuration réussie
-```
-
-### Étape 3 : Options avancées (optionnel)
-
-1. **Cliquez sur "Configurer"** sur la carte de l'intégration
-
-2. **Ajustez les options** :
-
-```
-┌──────────────────────────────────────────┐
-│ Options Balboa GS500Z                    │
-├──────────────────────────────────────────┤
-│                                          │
-│ Taille de la fenêtre glissante (3-20):   │
-│ [5                    ]                  │
-│                                          │
-│ ☑ Activer le garde-fou d'ordre          │
-│                                          │
-│         [Annuler]      [Soumettre]       │
-└──────────────────────────────────────────┘
-```
-
-- **Fenêtre glissante** : Nombre de trames pour validation (défaut : 5)
-  - Plus petit = réponse plus rapide, moins fiable
-  - Plus grand = plus fiable, réponse plus lente
-
-- **Garde-fou d'ordre** : Respecte la séquence ST→ECO→SL→ST
-  - ✅ Activé : sécurisé, évite les erreurs
-  - ❌ Désactivé : permet toutes les transitions
-
-3. **Cliquez sur "Soumettre"**
-
-## 🖥️ Dashboard Lovelace
-
-> **FR** : Le dashboard cible est disponible dans `lovelace/spa-dashboard.yaml`.
-> Certaines entités ne sont pas encore implémentées dans le firmware v1.5.3 —
-> voir `lovelace/README.md` pour le statut détaillé.
->
-> **EN**: The target dashboard is available in `lovelace/spa-dashboard.yaml`.
-> Some entities are not yet implemented in firmware v1.5.3 —
-> see `lovelace/README.md` for the detailed status.
-
-### FR — Installation du dashboard / EN — Dashboard installation
-
-1. **FR** : Aller dans HA → Vue d'ensemble → Modifier le tableau de bord → ⋮ → Éditeur YAML.
-   **EN**: Go to HA → Overview → Edit dashboard → ⋮ → YAML editor.
-
-2. **FR** : Coller le contenu de `lovelace/spa-dashboard.yaml`.
-   **EN**: Paste the contents of `lovelace/spa-dashboard.yaml`.
-
-3. **FR** : Sauvegarder. Les entités manquantes apparaîtront avec une erreur
-   jusqu'à leur implémentation dans le firmware v1.6+.
-   **EN**: Save. Missing entities will show an error until they are implemented
-   in firmware v1.6+.
-
-### FR — Helpers HA à créer / EN — HA helpers to create
+### 5.1 FR — Créer les helpers / EN — Create helpers
 
 **FR** : Avant d'utiliser le dashboard, créer dans HA → Paramètres → Assistants :
 
 **EN**: Before using the dashboard, create in HA → Settings → Helpers:
 
-| Helper | Type | Description FR | EN |
-|---|---|---|---|
-| `input_boolean.spa_temp_pending` | Input Boolean | Changement de consigne en cours | Setpoint change in progress |
+| Helper | Type | Note |
+|---|---|---|
+| `input_boolean.spa_temp_pending` | Input Boolean | Changement consigne en cours / Setpoint change in progress |
+
+### 5.2 FR — Installer le dashboard / EN — Install the dashboard
+
+1. **FR** : HA → Vue d'ensemble → ⋮ → Modifier le tableau de bord → ⋮ → Éditeur YAML.
+   **EN**: HA → Overview → ⋮ → Edit dashboard → ⋮ → YAML editor.
+2. **FR** : Copier le contenu de `lovelace/spa-dashboard.yaml`.
+   **EN**: Copy the contents of `lovelace/spa-dashboard.yaml`.
+3. **FR** : Sauvegarder.
+   **EN**: Save.
+
+> **FR** : Certaines entités du dashboard correspondent au firmware v1.6+
+> (à venir). Voir `lovelace/README.md` pour le statut détaillé.
+>
+> **EN**: Some dashboard entities correspond to firmware v1.6+ (upcoming).
+> See `lovelace/README.md` for the detailed status.
 
 ---
 
-## ✅ Vérification / Verification
+## 6. Vérification / Verification
 
-### FR — Vérifier les entités créées / EN — Check created entities
+### 6.1 FR — Tester la lecture / EN — Test reading
 
-1. **Allez dans Paramètres → Appareils et services**
-2. **Cliquez sur "Balboa GS500Z"**
-3. **Vérifiez les entités** :
+**FR** : Vérifier que `sensor.balboa_spa_control_01_spa_eau_temp` affiche
+une température cohérente (~30-40 °C selon le mode).
 
-```
-Appareil : Balboa GS500Z Spa
+**EN**: Check that `sensor.balboa_spa_control_01_spa_eau_temp` shows a
+sensible temperature (~30-40 °C depending on mode).
 
-Entités :
-┌─────────────────────────────────────────────┐
-│ climate.spa              │ 37°C → 38°C  [ST]│
-│ binary_sensor.spa_heater │ Actif            │
-└─────────────────────────────────────────────┘
-```
+### 6.2 FR — Tester un bouton / EN — Test a button
 
-### Tester le contrôle
+**FR** : Appuyer sur `button.balboa_spa_control_03a_spa_btn_lumiere`. La
+lumière du spa doit s'allumer/s'éteindre.
 
-1. **Allez dans Outils de développement → Services**
+**EN**: Press `button.balboa_spa_control_03a_spa_btn_lumiere`. The spa
+light should toggle.
 
-2. **Testez le changement de température** :
-   ```yaml
-   service: climate.set_temperature
-   target:
-     entity_id: climate.spa
-   data:
-     temperature: 38
-   ```
+### 6.3 FR — Tester le mode / EN — Test the mode
 
-3. **Testez le changement de mode** :
-   ```yaml
-   service: climate.set_preset_mode
-   target:
-     entity_id: climate.spa
-   data:
-     preset_mode: eco
-   ```
+**FR** : Appuyer sur `button.balboa_spa_control_03e_spa_btn_mode`. Le mode
+doit cycler ST → ECO → SL → ST.
 
-4. **Observez les logs** :
-   - Paramètres → Système → Logs
-   - Cherchez `balboa_gs500z`
-   - Vérifiez qu'il n'y a pas d'erreurs
-
-### Tester la carte thermostat
-
-1. **Créez un tableau de bord de test** :
-   - Allez dans Vue d'ensemble
-   - Cliquez sur "Modifier le tableau de bord"
-   - Ajoutez une carte "Thermostat"
-   - Sélectionnez `climate.spa`
-
-2. **Testez l'interface** :
-   - Changez la température avec le curseur
-   - Changez le mode avec les boutons
-   - Vérifiez que les valeurs se mettent à jour
-
-## 🐛 Dépannage
-
-### Problème : "Échec de connexion"
-
-**Symptôme** : Message d'erreur lors de la configuration.
-
-**Solutions** :
-1. Vérifiez l'adresse IP de l'EW11A :
-   ```bash
-   ping 192.168.1.100
-   ```
-2. Vérifiez le port :
-   ```bash
-   telnet 192.168.1.100 8899
-   ```
-3. Vérifiez que l'EW11A est en mode TCP Server
-4. Vérifiez le pare-feu de Home Assistant
-
-### Problème : Entités indisponibles
-
-**Symptôme** : `climate.spa` et `binary_sensor.spa_heater` sont "Indisponibles".
-
-**Solutions** :
-1. Vérifiez les logs (Paramètres → Système → Logs)
-2. Vérifiez la connexion réseau
-3. Redémarrez l'intégration :
-   - Paramètres → Appareils et services
-   - Balboa GS500Z → ⋮ → Recharger
-
-### Problème : Valeurs ne se mettent pas à jour
-
-**Symptôme** : Les températures restent figées.
-
-**Solutions** :
-1. Activez les logs debug :
-   ```yaml
-   # configuration.yaml
-   logger:
-     default: info
-     logs:
-       custom_components.balboa_gs500z: debug
-   ```
-2. Observez les trames dans les logs
-3. Augmentez la fenêtre glissante dans les options
-4. Vérifiez que le spa envoie bien des trames :
-   ```bash
-   telnet 192.168.1.100 8899
-   ```
-
-### Problème : Commandes ne fonctionnent pas
-
-**Symptôme** : Changement de température ou mode sans effet.
-
-**Note** : L'implémentation des commandes d'écriture est une base qui peut nécessiter des ajustements.
-
-**Solutions** :
-1. Activez les logs debug
-2. Observez les commandes envoyées dans les logs
-3. Vérifiez que les trames sont bien envoyées à l'EW11A
-4. Consultez [PROTOCOL.md](PROTOCOL.md) pour ajuster les commandes
-5. Ouvrez une issue sur GitHub avec vos logs
-
-### Problème : Perte de connexion fréquente
-
-**Symptôme** : L'intégration se déconnecte souvent.
-
-**Solutions** :
-1. Vérifiez la qualité du signal WiFi de l'EW11A
-2. Rapprochez l'EW11A du routeur ou ajoutez un répéteur
-3. Utilisez un canal WiFi moins encombré
-4. Vérifiez l'alimentation de l'EW11A (tension stable)
-
-## 📚 Ressources supplémentaires
-
-- [README.md](README.md) - Vue d'ensemble et fonctionnalités
-- [PROTOCOL.md](PROTOCOL.md) - Détails du protocole RS-485
-- [EXAMPLES.md](EXAMPLES.md) - Exemples d'automatisations
-- [CONTRIBUTING.md](CONTRIBUTING.md) - Guide de contribution
-
-## 💬 Support
-
-Si vous rencontrez des problèmes :
-
-1. **Consultez les logs** avec debug activé
-2. **Recherchez dans les issues existantes** sur GitHub
-3. **Ouvrez une nouvelle issue** avec :
-   - Description détaillée
-   - Logs pertinents
-   - Version HA et version intégration
-   - Configuration matérielle
+**EN**: Press `button.balboa_spa_control_03e_spa_btn_mode`. The mode should
+cycle ST → ECO → SL → ST.
 
 ---
 
-**Félicitations !** Votre spa Balboa GS500Z est maintenant connecté à Home Assistant ! 🎉
+## 7. Dépannage / Troubleshooting
+
+### FR — Pas de trame RS-485 / EN — No RS-485 frames
+
+- **FR** : Vérifier le câblage TTL485 (TXD du module → D2 ESP, pas l'inverse).
+  Vérifier que J18 fournit bien des trames (oscilloscope ou TTL485 → PC).
+- **EN**: Check TTL485 wiring (module TXD → ESP D2, not the reverse). Check
+  J18 actually outputs frames (scope or TTL485 → PC).
+
+### FR — Bouton Light s'active au boot / EN — Light button triggers at boot
+
+- **FR** : Vous utilisez GPIO16. Migrer vers GPIO15 (D8) — cf. FIX-1 v1.5.3.
+- **EN**: You are using GPIO16. Migrate to GPIO15 (D8) — see FIX-1 v1.5.3.
+
+### FR — Boutons ne déclenchent rien / EN — Buttons trigger nothing
+
+- **FR** : Vérifier l'alimentation 5 V du module optocoupleur (côté IN).
+  Vérifier les cavaliers rouges retirés. Vérifier le pinout RJ45.
+- **EN**: Check the 5 V supply on the optocoupler module (IN side). Check
+  red jumpers removed. Check RJ45 pinout.
+
+### FR — ESP redémarre / EN — ESP reboots
+
+- **FR** : Vérifier que vous êtes sur le firmware v1.5.3 (FIX-2 supprime
+  la fragmentation heap qui causait des WDT toutes les 20-155 min).
+- **EN**: Check you are on firmware v1.5.3 (FIX-2 removes heap
+  fragmentation causing WDT every 20-155 min).
+
+### FR — Mode SL confondu avec ECO / EN — SL mode confused with ECO
+
+- **FR** : Le firmware utilise `b18 == 0x08` pour SL (et non `b23`), ce qui
+  évite le piège du `b23=0x00` en SL stabilisé.
+- **EN**: The firmware uses `b18 == 0x08` for SL (not `b23`), avoiding the
+  `b23=0x00` issue in stabilized SL.
+
+---
+
+## FR — Pour aller plus loin / EN — Going further
+
+- `HARDWARE.md` — architecture matérielle complète / full hardware architecture
+- `BUS_J1_PROTOCOL.md` — protocole bus J1 / J1 bus protocol
+- `PROTOCOL.md` — protocole RS-485 / RS-485 protocol
+- `APPROACHES_TESTED.md` — historique des pistes / approaches history

@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed (BREAKING)
+- **`custom_components/balboa_gs500z/`** : suppression complete de l'ancien
+  composant HACS. Le projet est desormais purement base sur **ESPHome**
+  + decouverte native HA + dashboard Lovelace.
+- **`hacs.json`** : supprime, le projet n'est plus un composant HACS.
+- **`.github/workflows/`** : suppression des workflows Hassfest, HACS
+  validation et release (lies au composant HA supprime).
+- **`scripts/`** : suppression des scripts bash lies au composant HA.
+- **`EXAMPLES.md`, `UX_ANALYSIS.md`, `UX_IMPROVEMENTS.md`** : suppression,
+  contenu base sur l'ancien composant HACS.
+
+### Changed
+- `README.md` : reecriture complete bilingue FR/EN, focus sur l'approche
+  ESPHome + Lovelace (plus de composant HACS), nouvelles tables d'entites
+  et architecture materielle, badges adaptes.
+- `INSTALL.md` : reecriture complete bilingue FR/EN, supprime l'installation
+  du composant HACS, focus sur le flux ESPHome.
+- `CONTRIBUTING.md` : reecriture bilingue FR/EN, conventions adaptees au
+  scope reduit (firmware + Lovelace + docs).
+
 ### Added
 - `lovelace/spa-dashboard.yaml` : dashboard Lovelace cible — grille 3×2
   (thermostat, blower, lumiere, pompe, mode, cycles) + carte details
