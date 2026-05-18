@@ -38,10 +38,10 @@
 |-----------|--------|------|
 | Passerelle RS485→WiFi | Elfin EW11A | Lecture RS-485 sur J18, 9600 baud, TCP :8899 |
 | Module TTL→RS-485 | TTL485 (MAX485) | Adaptation niveaux pour lecture J18 |
-| Module optocoupleur | HY-M154 (PC817 ×4) | Simulation des boutons côté J1 (écriture) |
+| Module optocoupleur | PC817 ×4 (TLP281-4 ou HY-M154 ⚠) | Simulation des boutons côté J1 (écriture) |
 | Serveur HA | Raspberry Pi 5 + HAOS | Home Assistant, broker MQTT port 1883 |
 | ESP8266 #1 (IR) | NodeMCU v2 | Émetteur/récepteur IR (ESPHome) |
-| ESP8266 #2 (J1) | NodeMCU 1.0 ESP-12E | Pilote du module HY-M154 (boutons VL403) |
+| ESP8266 #2 (J1) | NodeMCU 1.0 ESP-12E | Pilote du module optocoupleur (boutons VL403) |
 | Prise connectée | Tuya | Coupure alimentation spa |
 | Réseau WiFi | 2.4 GHz | Couverture jardin/spa via répéteur |
 
@@ -57,15 +57,16 @@ L'ESP8266 est stable uniquement alimenté via le Raspberry Pi 5.
 ```
 GS501Z+ (carte principale)
   |
-  +--[J1]-- ESP8266 + module HY-M154 (PC817 ×4) — simulation boutons (écriture)
-  |           \-- pin 1 (Gris)   : Bouton TEMP
-  |               pin 2 (Orange) : Bouton BLOWER
-  |               pin 6 (Jaune)  : Bouton POMPE
-  |               pin 7 (Bleu)   : Bouton LUMIÈRE
-  |               pin 8 (Marron) : COMMUN (référence)
+  +--[J1]-- ESP8266 + module optocoupleur (PC817 ×4) — simulation boutons (écriture)
+  |           \-- pin 1 (Marron) : COMMUN (+5 V référence)
+  |               pin 2 (Bleu)   : Bouton LUMIÈRE
+  |               pin 3 (Jaune)  : Bouton POMPE
+  |               pin 7 (Orange) : Bouton BLOWER
+  |               pin 8 (Gris)   : Bouton TEMP
   |
   +--[J2]-- VL403 (panneau physique — matrice courts-circuits)
-  |          (même brochage et même bus que J1 ; les deux coexistent)
+  |          (même brochage et même bus que J1 ; les deux coexistent ;
+  |           module IR Balboa retiré pour libérer J2)
   |
   +--[J18]- TTL485 (MAX485) → EW11A (RS-485, RX-only)
              pin A : RS-485 A
@@ -84,17 +85,22 @@ GS501Z+ (carte principale)
 
 **Confirmé par tests physiques (avril 2026).**
 
+> **Convention de numérotation RJ45** : connecteur face contacts visibles,
+> loquet vers le bas, pins comptés **de gauche (pin 1) à droite (pin 8)**.
+> Le COMMUN (+5 V) est sur **pin 1 (Marron)**. Les fonctions sortent sur
+> pin 2 / 3 / 7 / 8.
+
 Le VL403 n'utilise PAS de bus série multiplexé. Chaque bouton est un simple
-court-circuit entre le fil commun (Marron, pin 8) et le fil de la fonction.
+court-circuit entre le fil commun (Marron, pin 1) et le fil de la fonction.
 
 | Action | Court-circuit | Pins RJ45 |
 |--------|--------------|-----------|
-| Blower ON/OFF | Marron + Orange | 8 + 2 |
-| Pompe LOW/HIGH | Marron + Jaune | 8 + 6 |
-| Lumière ON/OFF | Marron + Bleu | 8 + 7 |
-| Temp +/- | Marron + Gris | 8 + 1 |
-| Mode (ST→ECO→SL) | Marron + Gris + Bleu | 8 + 1 + 7 |
-| Cycles filtration | Marron + Gris + Jaune | 8 + 1 + 6 |
+| Lumière ON/OFF | Marron + Bleu | 1 + 2 |
+| Pompe LOW/HIGH | Marron + Jaune | 1 + 3 |
+| Blower ON/OFF | Marron + Orange | 1 + 7 |
+| Temp +/- | Marron + Gris | 1 + 8 |
+| Mode (ST→ECO→SL) | Marron + Gris + Bleu | 1 + 8 + 2 |
+| Cycles filtration | Marron + Gris + Jaune | 1 + 8 + 3 |
 
 ---
 
@@ -134,14 +140,14 @@ Voir `BUS_J1_PROTOCOL.md` pour le tableau de câblage complet.
 
 ### Convention couleurs Dupont
 
-| Couleur | Signal VL403 |
-|---------|--------------|
-| Blanc   | Gris clavier (TEMP, pin 1) |
+| Couleur Dupont | Signal VL403 |
+|----------------|--------------|
+| Blanc   | Gris clavier (TEMP, pin 8) |
 | Noir    | GND |
-| Bleu    | Bleu clavier (LUMIÈRE, pin 7) |
-| Vert    | Jaune clavier (POMPE, pin 6) |
-| Orange  | Orange clavier (BLOWER, pin 2) |
-| Rouge   | Marron clavier (COMMUN, pin 8) |
+| Bleu    | Bleu clavier (LUMIÈRE, pin 2) |
+| Vert    | Jaune clavier (POMPE, pin 3) |
+| Orange  | Orange clavier (BLOWER, pin 7) |
+| Rouge   | Marron clavier (COMMUN, pin 1) |
 
 ---
 
@@ -156,7 +162,8 @@ Voir `BUS_J1_PROTOCOL.md` pour le tableau de câblage complet.
 
 Un VL403 d'occasion a été commandé pour les tests du bus J1.
 Le VL403 original est actuellement hors service (démonté).
-Dès réception : brancher sur J2, garder l'ESP + HY-M154 sur J1, et tester.
+Dès réception : brancher sur J2 (port libéré par le retrait du module IR),
+garder l'ESP + module optocoupleur sur J1, et tester.
 
 ---
 
@@ -181,6 +188,16 @@ manière fiable l'optocoupleur PC817. Une sortie GPIO ESP en 3,3 V est
 Sans 5 V, les commandes peuvent fonctionner partiellement mais de façon
 non fiable (déclenchements manqués, doubles appuis, etc.).
 
+> ⚠️ **TODO câblage HY-M154 — vérification multimètre à faire avant
+> intégration définitive.** Certains modules PC817 du commerce sont
+> **cathode-commun côté sortie**, alors que le bus J1 VL403 est
+> **anode-commun (+5 V)**. Si c'est le cas, la logique de commande doit
+> être inversée ou le module remplacé par une variante anode-commun.
+> À mesurer sur l'exemplaire physique avant câblage et à documenter ici.
+> Tant que cette mesure n'est pas faite, traiter le HY-M154 comme un
+> candidat et non comme la solution validée — TLP281-4 ou 4× EL817
+> individuels restent l'option de repli sûre.
+
 ---
 
 ## 10. Choix de l'ESP
@@ -199,14 +216,14 @@ ESP32 dual-core.
 
 ## 11. FAQ — choix matériels
 
-### TTL485 + HY-M154 — les deux sont nécessaires ?
+### TTL485 + module optocoupleur — les deux sont nécessaires ?
 
 Oui, ils répondent à deux besoins complémentaires :
 
 - **TTL485 sur J18** → télémétrie RS-485 en **lecture seule** (température,
   mode, pompe, chauffage, cycle de filtration…).
-- **HY-M154 (PC817 ×4) sur J1** → **simulation de boutons**, c'est-à-dire
-  le **contrôle en écriture** (changement de consigne, de mode, etc.).
+- **Module optocoupleur (PC817 ×4) sur J1** → **simulation de boutons**,
+  c'est-à-dire le **contrôle en écriture** (consigne, mode, etc.).
 
 J18 ne permet pas d'écrire ; J1 ne fournit pas la télémétrie. Les deux
 modules sont donc complémentaires, pas redondants.
@@ -215,7 +232,7 @@ modules sont donc complémentaires, pas redondants.
 
 Oui — J1 et J2 partagent le même bus. Une configuration éprouvée :
 
-- **J1** : ESP + module HY-M154 (écriture / simulation boutons)
+- **J1** : ESP + module optocoupleur (écriture / simulation boutons)
 - **J2** : panneau VL403 physique (lecture / contrôle manuel)
 
 Les deux cohabitent sans conflit. L'avertissement Balboa ("Panels with

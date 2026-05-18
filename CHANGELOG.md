@@ -8,9 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- `HARDWARE.md` / `BUS_J1_PROTOCOL.md` : **alignement du pinout RJ45 VL403
+  sur la convention du briefing** (loquet bas, lecture gauche→droite,
+  face contacts visibles) :
+  pin 1 = Marron (COMMUN +5 V), pin 2 = Bleu (LIGHT), pin 3 = Jaune (PUMP),
+  pin 7 = Orange (BLOWER), pin 8 = Gris (TEMP). Les pins 4/5/6 (Vert/Rouge/Noir)
+  portent vraisemblablement GND/Data/Clock du bus d'affichage 24-bit.
+  Toutes les tables de combinaisons et de câblage ont été re-numérotées.
 - `HARDWARE.md` : documentation des modules réellement utilisés —
-  **TTL485 (MAX485)** côté J18 pour la lecture RS-485, et
-  **HY-M154 (PC817 ×4)** côté J1 pour la simulation des boutons (écriture).
+  **TTL485 (MAX485)** côté J18 pour la lecture RS-485, et un module
+  **optocoupleur PC817 ×4** côté J1 pour la simulation des boutons.
 - `HARDWARE.md` : clarification de l'architecture J1/J2 partagée
   (ESP + HY-M154 sur J1, VL403 sur J2 — les deux cohabitent sans conflit
   puisque le VL403 n'est pas rétroéclairé).
@@ -22,11 +29,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   mono-core à éviter pour la combinaison RS-485 + WiFi temps réel).
 - `HARDWARE.md` : ajout d'une **FAQ** (TTL485 + HY-M154, J2 pour
   l'optocoupleur, compatibilité carte kgstorm/VL260).
-- `BUS_J1_PROTOCOL.md` : ajout du module **HY-M154** comme option
-  recommandée (déjà câblée, intègre ses résistances), avec encart
-  d'avertissement sur l'alimentation 5 V obligatoire.
+- `BUS_J1_PROTOCOL.md` : ajout du module **HY-M154** comme **candidat**
+  (et non solution validée), avec encart de vérifications préalables :
+  (1) alimentation 5 V côté IN obligatoire ; (2) **polarité côté sortie
+  à mesurer au multimètre** — certains modules PC817 sont cathode-commun
+  alors que le bus J1 est anode-commun. TLP281-4 ou 4× EL817 nus restent
+  la solution de repli sûre.
 - `BUS_J1_PROTOCOL.md` : ajout de l'option **bus partagé J1/J2** (sans
-  splitter) en plus de l'option splitter existante.
+  splitter) en plus de l'option splitter existante. Précision sur le
+  diviseur de tension 1 kΩ + 2 kΩ obligatoire pour toute lecture GPIO
+  sur le bus J1 (5 V → 3,3 V).
+
+### TODO (matériel à mesurer / valider)
+- [ ] **HY-M154 polarité sortie** : mesurer cathode/anode commune au
+  multimètre avant câblage définitif (cf. `BUS_J1_PROTOCOL.md` §2).
+- [ ] **Pins 4/5/6 J1** : confirmer au multimètre que Vert=GND, Rouge=Data,
+  Noir=Clock (hypothèse héritée du protocole kgstorm 24-bit).
+- [ ] **Durées d'impulsion** : calibrer expérimentalement les durées
+  minimales pour qu'un appui simulé soit reconnu par le VL403.
 
 ## [0.2.1] - 2026-04-21
 
